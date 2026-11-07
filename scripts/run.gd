@@ -8,6 +8,16 @@ const RESPAWN := 2
 const GAME_OVER := 3
 
 static var auto_start: bool = false
+## Phones emit a delayed mouse click after a touch. Ignore it so one tap is one action.
+static var ignore_mouse_until_ms: int = 0
+
+
+static func note_touch() -> void:
+	ignore_mouse_until_ms = Time.get_ticks_msec() + 800
+
+
+static func mouse_is_ghost() -> bool:
+	return Time.get_ticks_msec() < ignore_mouse_until_ms
 
 var state: int = READY
 var run_speed: float = 0.0
@@ -102,6 +112,11 @@ func _notification(what: int) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		note_touch()
+	elif event is InputEventMouseButton and mouse_is_ghost():
+		get_viewport().set_input_as_handled()
+		return
 	if state == READY and _is_press(event):
 		var left := _is_left_press(event)
 		var right := _is_right_press(event)

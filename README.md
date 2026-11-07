@@ -45,7 +45,9 @@ python3 -m http.server --directory build/web 8080
 
 Open `http://localhost:8080`. Browsers will not run a Godot web build from `file://`. The first tap starts the run and unlocks audio. Phones should be landscape; portrait shows a rotate hint.
 
-A GitHub Actions workflow (`.github/workflows/web-export.yml`) exports that same preset and uploads `glassfall-web` as a build artifact on pull requests and on `main`. Downloading the artifact is the playable package. Turning it into a public link means enabling GitHub Pages (or any static host) on that folder — this repo does not change that setting. Serve the files with the default static headers; the export does not need cross-origin isolation.
+The Web preset is single-threaded (`variant/thread_support=false`) and the page shell in `export/web_shell.html` keeps the canvas on the screen (`100dvh`, no scroll, `touch-action: none`). GitHub Pages cannot send the COOP/COEP headers a threaded build would need, so this is the build that runs at [https://thongdo05.github.io/sora-tsunagi/](https://thongdo05.github.io/sora-tsunagi/).
+
+`.github/workflows/pages.yml` exports that preset on every push to `main` and deploys it with GitHub Pages. Pull requests still upload a `glassfall-web` artifact from `.github/workflows/web-export.yml` and do not publish the site. Use the trailing slash on the Pages URL so `index.js` and `index.wasm` resolve inside `/sora-tsunagi/`.
 
 iOS and Android presets are not included. Web is the phone test path for v1.
 
