@@ -11,10 +11,10 @@ func setup(platform_width: float, platform_thickness: float) -> void:
 	collision_layer = 1
 	collision_mask = 0
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(width, 18)
+	shape.size = Vector2(width, 42)
 	var collision := CollisionShape2D.new()
 	collision.shape = shape
-	collision.position = Vector2(width * 0.5, 9)
+	collision.position = Vector2(width * 0.5, 16)
 	collision.one_way_collision = true
 	collision.one_way_collision_margin = 10.0
 	add_child(collision)

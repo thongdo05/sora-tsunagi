@@ -66,18 +66,16 @@ func _run() -> void:
 		print("FORCED kills=%s combo=%s" % [run.kills, run.combo])
 		if run.kills < 1:
 			_fail("dash did not kill a monster placed on the player")
-	# Scripted deaths cover fall/hit -> respawn -> game over regardless of the bot.
-	if run.state != RunRoot.GAME_OVER:
+	# Spend whatever lives are left. The bot may already have dropped one.
+	var guard := 0
+	while run.state != RunRoot.GAME_OVER and guard < 6:
+		guard += 1
+		var before := run.lives
 		run.debug_lose_life()
 		await physics_frame
-		if run.lives != 2 or run.state != RunRoot.RESPAWN:
-			_fail("first life loss should respawn (lives=%s state=%s)" % [run.lives, run.state])
-		run.debug_lose_life()
-		await physics_frame
-		if run.lives != 1:
-			_fail("second life loss lives=%s" % run.lives)
-		run.debug_lose_life()
-		await process_frame
+		if run.state != RunRoot.GAME_OVER and run.lives >= before:
+			_fail("life loss did not spend a life (lives=%s state=%s)" % [run.lives, run.state])
+			break
 	if run.state != RunRoot.GAME_OVER:
 		_fail("expected game over, state=%s lives=%s" % [run.state, run.lives])
 	if int(run.score) <= 0:

@@ -24,10 +24,10 @@ On the start screen, tap anywhere (or press Space / Enter). The same run keeps o
 
 | Input | Action |
 |---|---|
-| Left half of the screen, tap | Jump |
-| Left half, tap again in the air | Double jump |
-| Left half, hold | Glide (slower fall) |
-| Right half, tap | Dash. Overlap with a monster kills it |
+| Left half of the screen, tap | Short hop. Hold through the rise for a full jump |
+| Left half, tap again in the air | Weaker double jump (a tuck / gainer, not a second hop) |
+| Right half, tap | Dash-punch. The coated fist only comes out during the dash |
+| Falling fast onto a platform | Knees absorb it. A hard landing rolls and sheds a little speed |
 | Mouse | Same zones, left button. Right button dashes |
 | Keyboard | Space / W / Up jump and glide. Shift / K / J dash |
 

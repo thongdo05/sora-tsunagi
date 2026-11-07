@@ -119,7 +119,7 @@ func _maybe_monster(x: float, y: float, width: float, speed: float) -> void:
 
 
 func _next_gap(speed: float, index: int) -> float:
-	var air := 2.0 * abs(TUNING.jump_velocity) / TUNING.gravity
+	var air := TUNING.jump_air_time()
 	var reach: float = maxf(TUNING.gap_absolute_min, speed * air)
 	var low := TUNING.gap_reach_min
 	var high := TUNING.gap_reach_max

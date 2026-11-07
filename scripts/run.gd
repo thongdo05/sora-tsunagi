@@ -175,6 +175,7 @@ func register_kill(at: Vector2) -> void:
 	_shake(TUNING.shake_strength)
 	_flash_a = max(_flash_a, 0.55)
 	_start_hitstop()
+	player.on_attack_impact()
 	hud.set_combo(combo, true)
 
 
