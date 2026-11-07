@@ -43,6 +43,7 @@ func _input(event: InputEvent) -> void:
 		return
 	var handled := false
 	if event is InputEventScreenTouch:
+		RunRoot.note_touch()
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
 			if _is_left(touch.position):
@@ -54,6 +55,9 @@ func _input(event: InputEvent) -> void:
 			_jump_fingers.erase(touch.index)
 		handled = true
 	elif event is InputEventMouseButton:
+		if RunRoot.mouse_is_ghost():
+			get_viewport().set_input_as_handled()
+			return
 		var button := event as InputEventMouseButton
 		if button.button_index == MOUSE_BUTTON_LEFT:
 			if button.pressed:
