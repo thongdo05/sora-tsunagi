@@ -6,6 +6,7 @@ var life: float = 0.28
 
 func _ready() -> void:
 	z_index = 28
+	age = 0.05
 
 
 func _process(delta: float) -> void:

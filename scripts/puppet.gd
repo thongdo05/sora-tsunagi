@@ -56,6 +56,9 @@ func set_coat(amount: float) -> void:
 
 func impact() -> void:
 	_impact = 1.0
+	if _punch_fore:
+		_punch_fore.modulate = Color(1.0, 0.78, 0.7)
+		_punch_fore.scale = Vector2(1.2, 0.84)
 
 
 func fist_global() -> Vector2:

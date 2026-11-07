@@ -123,6 +123,28 @@ html, body {
 
 		<script src="$GODOT_URL"></script>
 		<script>
+function soraReadSafeArea() {
+	function px(side) {
+		var el = document.createElement('div');
+		el.style.position = 'fixed';
+		el.style.visibility = 'hidden';
+		el.style.pointerEvents = 'none';
+		if (side === 'left' || side === 'right') {
+			el.style.width = 'env(safe-area-inset-' + side + ')';
+			el.style.height = '0';
+		} else {
+			el.style.height = 'env(safe-area-inset-' + side + ')';
+			el.style.width = '0';
+		}
+		document.body.appendChild(el);
+		var n = (side === 'left' || side === 'right') ? el.offsetWidth : el.offsetHeight;
+		el.remove();
+		return n || 0;
+	}
+	var mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '') ? 1 : 0;
+	return [px('left'), px('top'), px('right'), px('bottom'), mobile, window.innerWidth || 1, window.innerHeight || 1];
+}
+
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 const engine = new Engine(GODOT_CONFIG);

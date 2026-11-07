@@ -35,16 +35,21 @@ var audio: Variant
 var camera: Camera2D
 
 var _last_x: float = 0.0
+var _run_origin_ms: int = 0
 var _respawn_until: int = 0
 var _hitstop_until: int = 0
-var _shake_left: float = 0.0
+var _slowmo_until: int = 0
+var _restart_locked_until: int = 0
+var _shake_until: int = 0
 var _shake_mag: float = 0.0
 var _focus_paused: bool = false
 var _flash: ColorRect
 var _flash_a: float = 0.0
 var _hurt_a: float = 0.0
+var _death_flash: float = 0.0
 var _world_fx: Node2D
 var _frames: int = 0
+var _clock_ms: int = 0
 
 
 func _ready() -> void:
@@ -56,8 +61,9 @@ func _ready() -> void:
 	best = _load_best()
 	_build()
 	player.drive_speed = 0.0
-	track.update(player.global_position.x, TUNING.run_speed_start)
+	track.update(player.global_position.x, TUNING.run_speed_start, 0.0)
 	_place_camera()
+	_clock_ms = Time.get_ticks_msec()
 	hud.set_lives(lives)
 	hud.set_score(0)
 	hud.set_combo(0, false)
@@ -70,20 +76,22 @@ func _ready() -> void:
 		controls.enabled = false
 
 
-func _physics_process(delta: float) -> void:
-	if state == PLAYING:
-		run_speed = min(TUNING.run_speed_max, run_speed + TUNING.run_acceleration * delta)
+func _physics_process(_delta: float) -> void:
+	if state == PLAYING or state == RESPAWN:
+		run_speed = TUNING.speed_for_time(_run_elapsed())
+	elif state == GAME_OVER:
+		run_speed = 0.0
+	else:
+		run_speed = TUNING.run_speed_start
 	player.drive_speed = run_speed if state == PLAYING else 0.0
 
 
 func _process(delta: float) -> void:
 	_frames += 1
-	if Engine.time_scale < 0.99 and Time.get_ticks_msec() >= _hitstop_until:
-		Engine.time_scale = 1.0
-	if state == RESPAWN and Time.get_ticks_msec() >= _respawn_until:
-		_finish_respawn()
+	_tick_real()
+	var elapsed := _run_elapsed() if state == PLAYING or state == RESPAWN else 0.0
 	if state == PLAYING or state == READY or state == RESPAWN:
-		track.update(player.global_position.x, max(run_speed, TUNING.run_speed_start))
+		track.update(player.global_position.x, maxf(run_speed, TUNING.run_speed_start), TUNING.density_for_time(elapsed))
 	if state == PLAYING:
 		var dx := player.global_position.x - _last_x
 		if dx > 0.0:
@@ -92,10 +100,15 @@ func _process(delta: float) -> void:
 		if player.global_position.y > _kill_y():
 			on_life_lost(true)
 	_place_camera()
-	_update_shake(delta)
 	_update_flash(delta)
 	hud.set_score(score)
 	_maybe_screenshot()
+
+
+func _run_elapsed() -> float:
+	if _run_origin_ms <= 0:
+		return 0.0
+	return maxf(0.0, (Time.get_ticks_msec() - _run_origin_ms) / 1000.0)
 
 
 func _notification(what: int) -> void:
@@ -129,6 +142,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif state == GAME_OVER and _is_press(event):
 		get_viewport().set_input_as_handled()
+		if Time.get_ticks_msec() < _restart_locked_until:
+			return
 		restart()
 
 
@@ -143,6 +158,9 @@ func start_run() -> void:
 	kills = 0
 	combo = 0
 	run_speed = TUNING.run_speed_start
+	_run_origin_ms = Time.get_ticks_msec()
+	_slowmo_until = 0
+	_hitstop_until = 0
 	_last_x = player.global_position.x
 	controls.enabled = true
 	hud.show_start(false)
@@ -191,22 +209,33 @@ func on_life_lost(fell: bool) -> void:
 		return
 	if not fell and player.invuln > 0.0:
 		return
-	Engine.time_scale = 1.0
-	_hitstop_until = 0
+	# One run, one score. A life lost does not write this value.
+	var held := score
+	_release_hitstop()
 	lives -= 1
 	combo = 0
 	hud.set_lives(lives)
 	hud.set_combo(0, false)
+	hud.set_score(held)
 	audio.play("death")
-	_shake(TUNING.shake_strength * 0.6)
-	_hurt_a = max(_hurt_a, 0.38)
+	_shake(TUNING.shake_strength * 0.85)
+	_death_flash = maxf(_death_flash, TUNING.death_flash)
+	if fell:
+		var view := get_viewport().get_visible_rect().size
+		var visible_bottom := camera.global_position.y + view.y * 0.5 - 70.0
+		if player.global_position.y > visible_bottom:
+			player.global_position.y = visible_bottom
+	_spawn_shatter(player.global_position + Vector2(10.0, -TUNING.player_height * 0.45))
+	var now := Time.get_ticks_msec()
+	_slowmo_until = now + int(TUNING.death_slowmo_seconds * 1000.0)
+	Engine.time_scale = TUNING.death_slowmo_scale
 	if lives <= 0:
 		_game_over()
 	else:
 		state = RESPAWN
-		player.begin_respawn()
-		controls.enabled = true
-		_respawn_until = Time.get_ticks_msec() + int(TUNING.respawn_delay * 1000.0)
+		player.begin_death(fell)
+		controls.enabled = false
+		_respawn_until = now + int(TUNING.respawn_delay * 1000.0)
 
 
 func debug_lose_life() -> void:
@@ -224,6 +253,7 @@ func _game_over() -> void:
 	player.drive_speed = 0.0
 	player.freeze()
 	controls.enabled = false
+	_restart_locked_until = Time.get_ticks_msec() + TUNING.restart_lock_ms
 	var final_score := int(score)
 	if final_score > best:
 		best = final_score
@@ -232,11 +262,19 @@ func _game_over() -> void:
 
 
 func _finish_respawn() -> void:
-	var spot := track.find_respawn(player.global_position.x + 30.0)
+	_slowmo_until = 0
+	Engine.time_scale = 1.0
+	var elapsed := _run_elapsed()
+	var look_ahead := player.global_position.x + 520.0
+	track.update(look_ahead, maxf(run_speed, TUNING.run_speed_start), TUNING.density_for_time(elapsed))
+	var spot := track.find_respawn(player.global_position.x + 70.0)
+	track.clear_near(spot, 240.0)
 	player.respawn_at(spot)
 	state = PLAYING
 	_last_x = player.global_position.x
-	run_speed = max(run_speed, TUNING.run_speed_start)
+	controls.enabled = true
+	run_speed = TUNING.speed_for_time(elapsed)
+	hud.set_score(score)
 
 
 func _build() -> void:
@@ -295,6 +333,12 @@ func _build() -> void:
 	controls.name = "Controls"
 	add_child(controls)
 
+	var clock := BeatClock.new()
+	clock.name = "BeatClock"
+	clock.process_mode = Node.PROCESS_MODE_ALWAYS
+	clock.host = self
+	add_child(clock)
+
 
 func _place_camera() -> void:
 	var view := get_viewport().get_visible_rect().size
@@ -312,19 +356,49 @@ func _start_hitstop() -> void:
 	var until := Time.get_ticks_msec() + TUNING.hit_stop_ms
 	if until > _hitstop_until:
 		_hitstop_until = until
-	Engine.time_scale = TUNING.hit_stop_time_scale
+	if TUNING.hit_stop_time_scale <= 0.001:
+		get_tree().paused = true
+	else:
+		Engine.time_scale = TUNING.hit_stop_time_scale
+
+
+func _release_hitstop() -> void:
+	_hitstop_until = 0
+	if get_tree().paused and not _focus_paused:
+		get_tree().paused = false
+	if Time.get_ticks_msec() >= _slowmo_until:
+		Engine.time_scale = 1.0
+
+
+func _tick_real() -> void:
+	var now := Time.get_ticks_msec()
+	var step := clampf((now - _clock_ms) / 1000.0, 0.0, 0.05)
+	_clock_ms = now
+	if _hitstop_until > 0 and now >= _hitstop_until:
+		_release_hitstop()
+	if state == RESPAWN and now >= _respawn_until:
+		_finish_respawn()
+	if now < _slowmo_until and _hitstop_until <= 0 and not get_tree().paused:
+		Engine.time_scale = TUNING.death_slowmo_scale
+	elif _hitstop_until <= 0 and now >= _slowmo_until and Engine.time_scale < 0.999 and not get_tree().paused:
+		Engine.time_scale = 1.0
+	_update_shake()
+	if _death_flash > 0.0:
+		_death_flash = maxf(0.0, _death_flash - step * 4.4)
 
 
 func _shake(amount: float) -> void:
-	_shake_mag = max(_shake_mag, amount)
-	_shake_left = max(_shake_left, TUNING.shake_duration)
+	_shake_mag = maxf(_shake_mag, amount)
+	_shake_until = maxi(_shake_until, Time.get_ticks_msec() + int(TUNING.shake_duration * 1000.0))
 
 
-func _update_shake(delta: float) -> void:
-	var real: float = delta / maxf(Engine.time_scale, 0.001)
-	if _shake_left > 0.0:
-		_shake_left = max(0.0, _shake_left - real)
-		var strength := _shake_mag * clampf(_shake_left / TUNING.shake_duration, 0.0, 1.0)
+func _update_shake() -> void:
+	var now := Time.get_ticks_msec()
+	if camera == null:
+		return
+	if now < _shake_until:
+		var remain := float(_shake_until - now) / 1000.0
+		var strength := _shake_mag * clampf(remain / maxf(TUNING.shake_duration, 0.05), 0.0, 1.0)
 		camera.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * strength
 	else:
 		camera.offset = Vector2.ZERO
@@ -332,9 +406,11 @@ func _update_shake(delta: float) -> void:
 
 
 func _update_flash(delta: float) -> void:
-	_flash_a = move_toward(_flash_a, 0.0, delta * 3.4)
+	_flash_a = move_toward(_flash_a, 0.0, delta * 2.2)
 	_hurt_a = move_toward(_hurt_a, 0.0, delta * 2.4)
-	if _flash_a >= _hurt_a:
+	if _death_flash > 0.02:
+		_flash.color = Color(1, 1, 1, _death_flash)
+	elif _flash_a >= _hurt_a:
 		_flash.color = Color(1, 0.97, 0.93, _flash_a)
 	else:
 		_flash.color = Color(0.85, 0.12, 0.16, _hurt_a)
@@ -351,6 +427,20 @@ func _spawn_impact(at: Vector2) -> void:
 	var node = preload("res://scripts/impact_burst.gd").new()
 	node.position = at
 	_world_fx.add_child(node)
+
+
+func _spawn_shatter(at: Vector2) -> void:
+	var node = preload("res://scripts/shatter.gd").new()
+	node.position = at
+	_world_fx.add_child(node)
+
+
+class BeatClock extends Node:
+	var host: RunRoot
+
+	func _process(_delta: float) -> void:
+		if host != null:
+			host._tick_real()
 
 
 func _is_press(event: InputEvent) -> bool:

@@ -46,6 +46,42 @@ func _run() -> void:
 	])
 	if run.score <= 0.0:
 		_fail("score did not increase")
+	var pace := preload("res://assets/tuning/game_tuning.tres")
+	var speed_early := pace.speed_for_time(0.0)
+	var speed_mid := pace.speed_for_time(pace.pace_ramp_seconds * 0.67)
+	var speed_end := pace.speed_for_time(pace.pace_ramp_seconds)
+	if speed_end < speed_early * 1.6:
+		_fail("speed ramp too flat %s -> %s" % [speed_early, speed_end])
+	if speed_mid <= speed_early + 40.0:
+		_fail("speed has not climbed by two thirds of the ramp")
+	if pace.density_for_time(pace.pace_ramp_seconds) < 0.99:
+		_fail("density curve does not reach the end of the ramp")
+	if pace.hit_stop_ms < 60 or pace.hit_stop_ms > 90:
+		_fail("hit stop %sms is outside the felt range" % pace.hit_stop_ms)
+	if run.state == RunRoot.GAME_OVER:
+		run.state = RunRoot.PLAYING
+	run.lives = maxi(run.lives, 2)
+	run.player.invuln = 0.0
+	run.player.locked = false
+	if run.state == RunRoot.PLAYING:
+		run.score = 2433
+		run.hud.set_score(run.score)
+		var shown_before: String = run.hud.score_text
+		run.debug_lose_life()
+		if int(run.score) != 2433:
+			_fail("score changed on the death frame %s" % run.score)
+		if shown_before != "2,433" or run.hud.score_text != "2,433":
+			_fail("score label reset on death (%s -> %s)" % [shown_before, run.hud.score_text])
+		var started := Time.get_ticks_msec()
+		while run.state == RunRoot.RESPAWN and Time.get_ticks_msec() - started < 4000:
+			await physics_frame
+		if run.state != RunRoot.PLAYING:
+			_fail("respawn did not return to play (state=%s)" % run.state)
+		elif int(run.score) < 2433:
+			_fail("score dropped across respawn to %s" % int(run.score))
+		elif int(str(run.hud.score_text).replace(",", "")) < 2433:
+			_fail("hud showed %s after respawn" % run.hud.score_text)
+		print("SCORE HELD %s -> %s hud=%s state=%s" % [2433, int(run.score), run.hud.score_text, run.state])
 	if run.track.platforms.size() < 3:
 		_fail("track did not generate platforms")
 	if run.kills < 1 and run.state == RunRoot.PLAYING:

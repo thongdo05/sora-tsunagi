@@ -25,6 +25,8 @@ var _speed_scale: float = 1.0
 var _rolling: float = 0.0
 var _doubling: float = 0.0
 var _land_left: float = 0.0
+var _dying: bool = false
+var _death_fell: bool = false
 
 var _puppet: GlassPuppet
 var _hurt: Area2D
@@ -44,12 +46,23 @@ func _ready() -> void:
 	_build_shadow()
 
 
-func begin_respawn() -> void:
-	locked = true
+func begin_death(fell: bool) -> void:
+	_dying = true
+	_death_fell = fell
 	_dashing = false
-	visible = false
-	velocity = Vector2.ZERO
+	_dash_blend = 0.0
+	_takeoff_left = 0.0
+	_rolling = 0.0
+	locked = false
+	visible = true
 	_hurt.monitoring = false
+	_jump_buffer = 0.0
+	_dash_buffer = 0.0
+	if not fell:
+		velocity = Vector2(velocity.x * 0.12, -240.0)
+	if _puppet:
+		_puppet.modulate.a = 1.0
+		_puppet.set_coat(0.0)
 
 
 func respawn_at(spot: Vector2) -> void:
@@ -57,6 +70,7 @@ func respawn_at(spot: Vector2) -> void:
 	velocity = Vector2.ZERO
 	locked = false
 	visible = true
+	_dying = false
 	_dashing = false
 	_dash_got_kill = false
 	_dash_blend = 0.0
@@ -65,13 +79,18 @@ func respawn_at(spot: Vector2) -> void:
 	_doubling = 0.0
 	_speed_scale = 1.0
 	invuln = TUNING.hurt_invuln
+	_jump_buffer = 0.0
+	_dash_buffer = 0.0
 	jumps_left = 1
 	_was_on_floor = false
 	_coyote = TUNING.coyote_time
 	_hurt.monitoring = true
+	if _puppet:
+		_puppet.modulate = Color.WHITE
 
 
 func freeze() -> void:
+	_dying = false
 	locked = true
 	_dashing = false
 	_hurt.monitoring = false
@@ -91,6 +110,19 @@ func _physics_process(delta: float) -> void:
 	dash_cd = max(0.0, dash_cd - delta)
 	if invuln > 0.0:
 		invuln = max(0.0, invuln - delta)
+
+	if _dying:
+		velocity.y += TUNING.fall_gravity * delta
+		if velocity.y > TUNING.max_fall_speed:
+			velocity.y = TUNING.max_fall_speed
+		if not _death_fell:
+			velocity.x = move_toward(velocity.x, 0.0, 700.0 * delta)
+		move_and_slide()
+		if _puppet:
+			var fade_rate := 0.45 if _death_fell else 1.6
+			_puppet.modulate.a = maxf(0.15 if _death_fell else 0.0, _puppet.modulate.a - delta * fade_rate)
+		_drive_puppet()
+		return
 
 	if locked:
 		velocity = Vector2.ZERO
@@ -273,8 +305,10 @@ func _drive_puppet() -> void:
 		else:
 			coat = clampf((1.0 - t) / 0.28, 0.0, 1.0)
 	_puppet.set_coat(coat)
+	if _dying:
+		return
 	if invuln > 0.0:
-		_puppet.modulate.a = 0.35 if int(invuln * 14.0) % 2 == 0 else 1.0
+		_puppet.modulate.a = 0.42 if int(invuln * 10.0) % 2 == 0 else 1.0
 	else:
 		_puppet.modulate.a = 1.0
 
