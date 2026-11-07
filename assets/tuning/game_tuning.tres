@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="GameTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://assets/tuning/game_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+run_speed_start = 580.0
+run_speed_max = 1040.0
+run_acceleration = 6.5
+gravity = 2500.0
+jump_velocity = -1000.0
+double_jump_velocity = -860.0
+glide_gravity = 480.0
+glide_max_fall = 140.0
+max_fall_speed = 1500.0
+coyote_time = 0.12
+jump_buffer = 0.14
+dash_distance = 280.0
+dash_duration = 0.16
+dash_cooldown = 0.52
+dash_buffer = 0.12
+dash_gravity_scale = 0.45
+lip_hop_velocity = -380.0
+hit_stop_ms = 70
+hit_stop_time_scale = 0.02
+shake_strength = 13.0
+shake_duration = 0.22
+hurt_invuln = 1.4
+respawn_delay = 0.45
+kill_margin = 90.0
+ground_y = 820.0
+camera_anchor = 0.3
+camera_ground_fraction = 0.78
+player_height = 240.0
+player_start_x = 380.0
+starter_width = 1700.0
+platform_thickness = 58.0
+platform_min_width = 480.0
+platform_max_width = 940.0
+platform_y_min = 700.0
+platform_y_max = 880.0
+step_up_max = 140.0
+step_down_max = 180.0
+gap_reach_min = 0.28
+gap_reach_max = 0.56
+gap_reach_long = 0.8
+long_gap_chance = 0.16
+gap_absolute_min = 120.0
+gap_absolute_max = 680.0
+spawn_ahead = 2800.0
+despawn_behind = 1000.0
+monster_chance_start = 0.36
+monster_chance_max = 0.7
+flyer_chance = 0.28
+flyer_height = 118.0
+telegraph_time = 0.5
+telegraph_extra_px = 240.0
+first_quiet_distance = 1600.0
+landing_pocket = 210.0
+min_monster_gap = 540.0
+lives_per_run = 3
+points_per_pixel = 0.12
+kill_points = 100

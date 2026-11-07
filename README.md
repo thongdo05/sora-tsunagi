@@ -1,9 +1,72 @@
 # Sora Tsunagi (空繋ぎ)
 
-First design draft for Thong Do’s new endless 2D anime dashing combat game. Sora Tsunagi (空繋ぎ, loosely "mending the sky") is the working title, pending native Japanese review and trademark clearance.
+First playable prototype of Thong Do’s endless 2D anime dash game, plus the design draft. Sora Tsunagi (空繋ぎ, loosely "mending the sky") is the working title, pending native Japanese review and trademark clearance.
 
 This is a separate project from **Reincarnated as WHAT?!** and **Kinetic Arm**.
 
-See [the design document](docs/DESIGN.md). This draft records confirmed direction and explicitly marks decisions still open; it is not an approved production budget or build plan.
+Glassfall is the only world in this build. It is a landscape runner meant to prove run, jump, dash, and dash-or-die on a phone. Guardians, shards, the world loop, the other fighters, music, ads, and the leaderboard are out of scope.
 
-Concept art and generation records (about 300 MB of images) are stored outside this repository for now. A decision on Git LFS versus external storage is still pending.
+- [Design draft](docs/DESIGN.md) (latest, November 7 2026)
+- [Build plan v1](docs/BUILD_PLAN_V1.md)
+- [Art direction](docs/ART_DIRECTION_PROPOSAL.md)
+
+## Run it
+
+Tested with **Godot 4.7.2** (the 4.7 line). The project uses the GL Compatibility renderer.
+
+1. Install Godot 4.7 from [the engine site](https://godotengine.org/download).
+2. Open this folder (`project.godot`) in the Godot project manager.
+3. Press F5 / Play. The window is a 16:9 view of a 1920×1080 playfield.
+
+On the start screen, tap anywhere (or press Space / Enter). The same run keeps one score across three lives. Falling off or touching a monster without dashing costs a life and drops you on the next platform. The third loss opens the score screen; tap again to run from the start.
+
+### Controls
+
+| Input | Action |
+|---|---|
+| Left half of the screen, tap | Jump |
+| Left half, tap again in the air | Double jump |
+| Left half, hold | Glide (slower fall) |
+| Right half, tap | Dash. Overlap with a monster kills it |
+| Mouse | Same zones, left button. Right button dashes |
+| Keyboard | Space / W / Up jump and glide. Shift / K / J dash |
+
+Jumps have coyote time and a short input buffer. A dash that doesn't kill anything breaks the combo. Getting hit breaks it too.
+
+## Web build
+
+Export templates for 4.7.2 have to be installed once (Editor → Manage Export Templates, or the path below). The Web preset is `export_presets.cfg`. Thread support is off so the build can be hosted as static files.
+
+```bash
+mkdir -p build/web
+godot --headless --path . --export-release Web build/web/index.html
+python3 -m http.server --directory build/web 8080
+```
+
+Open `http://localhost:8080`. Browsers will not run a Godot web build from `file://`. The first tap starts the run and unlocks audio. Phones should be landscape; portrait shows a rotate hint.
+
+A GitHub Actions workflow (`.github/workflows/web-export.yml`) exports that same preset and uploads `glassfall-web` as a build artifact on pull requests and on `main`. Downloading the artifact is the playable package. Turning it into a public link means enabling GitHub Pages (or any static host) on that folder — this repo does not change that setting. Serve the files with the default static headers; the export does not need cross-origin isolation.
+
+iOS and Android presets are not included. Web is the phone test path for v1.
+
+## Tuning
+
+All gameplay numbers are in [`assets/tuning/game_tuning.tres`](assets/tuning/game_tuning.tres) (`GameTuning` in `game_tuning.gd`). That includes run speed and its ramp, gravity, jump and double-jump velocities, glide, dash distance / duration / cooldown, coyote time and buffers, hit-stop, shake, monster odds, gap ratios, and scoring. Change a value and press F5.
+
+Jump height is `jump_velocity² / (2 × gravity)`. Dash length is `dash_distance` pixels covered during `dash_duration`.
+
+## What is placeholder
+
+- The pirate is the single attack-pose cutout. At rest a mask recolors the coated arm to skin and hides the painted lightning. The black arm and red-black sparks come back only during the dash. A small patch of the original coating can remain where the sleeve meets the forearm. Bob and squash are code, not new frames.
+- Platforms and monsters are drawn shapes, not final illustrations. The background is `glassfall_bg.jpg` scrolled as parallax; it is one painting, so the loop is a soft crossfade, not a seamless tile.
+- UI is type and flat panels. There is no music.
+
+Concept art stays out of this repo. The Glassfall look mock is a reference only and is not committed.
+
+## Check
+
+```bash
+godot --headless --path . -s res://tests/smoke_test.gd
+```
+
+That bots a few seconds of a run, spends all three lives, and restarts. `SORA_NO_PAUSE=1` is worth setting if the window is unfocused. `SORA_SCREENSHOT` and `SORA_GAMEOVER` save PNGs when a display is available.
