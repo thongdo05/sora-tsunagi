@@ -19,6 +19,11 @@ const BODY_PX := 360.0
 const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_6f.png")
 const DASH_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_7f.png")
 const ROLL_SHEET := preload("res://assets/sprites/sheets/pirate_roll_4f.png")
+const RUN_SHEET := preload("res://assets/sprites/sheets/pirate_run_8f.png")
+## One stride at the opening run speed. Faster running shortens the cycle.
+const RUN_CYCLE := 0.46
+## Head center of each painted frame. Pinning these stops the body popping sideways.
+const RUN_HEAD_X: Array[float] = [236.0, 268.0, 228.0, 274.0, 256.0, 234.0, 250.0, 251.0]
 
 var fist_anchor: Node2D
 var coat_material: ShaderMaterial
@@ -36,6 +41,8 @@ var _sheet: Sprite2D
 var _sheet_prev: Sprite2D
 var _sheet_bolts: Bolts
 var _sheet_scale := 1.0
+var _speed_ratio := 1.0
+var _run_time := 0.0
 
 
 func _ready() -> void:
@@ -44,6 +51,8 @@ func _ready() -> void:
 	_build()
 	_build_anims()
 	_build_sheet()
+	if _hip:
+		_hip.visible = false
 	play_state("run", 1.0)
 
 
@@ -52,21 +61,13 @@ func set_phase(phase: float) -> void:
 
 
 func play_state(state: String, speed_ratio: float) -> void:
-	var sheeted := state != "run"
-	if state == "run":
-		if _state != "run":
-			_state = "run"
-			_frame = -1
-			if _anim.has_animation("run"):
-				_anim.play("run", 0.08)
-		_anim.speed_scale = clampf(speed_ratio, 0.85, 2.1)
-		_apply_sheet_frame()
-		return
+	_speed_ratio = clampf(speed_ratio, 0.85, 2.1)
 	if _state != state:
 		_state = state
-		_frame = -1
 		_blend = 0.0
-	if sheeted:
+	if _hip:
+		_hip.visible = false
+	if _anim.is_playing():
 		_anim.pause()
 	_apply_sheet_frame()
 
@@ -90,10 +91,10 @@ func fist_global() -> Vector2:
 
 
 func _process(delta: float) -> void:
-	var rig_target := 1.0 if _state == "run" else 0.0
-	_rig_mix = move_toward(_rig_mix, rig_target, delta / 0.08)
+	if _state == "run":
+		_run_time += delta * _speed_ratio
 	if _hip:
-		_hip.modulate.a = _rig_mix
+		_hip.visible = false
 	if _blend < 1.0:
 		_blend = minf(1.0, _blend + delta / 0.08)
 	_apply_sheet_frame()
@@ -429,7 +430,10 @@ func _make_sheet_sprite(material: ShaderMaterial) -> Sprite2D:
 
 func _layout_sheet() -> void:
 	var squash := 0.0
-	if _state == "takeoff":
+	if _state == "run":
+		var step := fmod(_run_time / RUN_CYCLE, 1.0) * TAU * 2.0
+		squash = sin(step) * 0.028
+	elif _state == "takeoff":
 		squash = -0.07
 	elif _state == "land":
 		squash = 0.09
@@ -440,30 +444,31 @@ func _layout_sheet() -> void:
 	for sprite in [_sheet, _sheet_prev]:
 		if sprite == null:
 			continue
+		var anchor_x := float(sprite.get_meta("anchor_x", FOOT.x))
 		sprite.scale = Vector2(sx, sy)
-		sprite.position = Vector2(-FOOT.x * sx, -FOOT.y * sy)
+		sprite.position = Vector2(-anchor_x * sx, -FOOT.y * sy)
 
 
 func _apply_sheet_frame() -> void:
 	if _sheet == null:
 		return
-	var sheeted := _state != "run"
-	if not sheeted:
-		_sheet.visible = false
-		_sheet_prev.visible = false
-		if _sheet_bolts:
-			_sheet_bolts.visible = false
-		return
 	var texture := _texture_for(_state)
 	var frame := _frame_for(_state, _phase)
 	var count := _frame_count(_state)
 	frame = clampi(frame, 0, count - 1)
-	if frame != _frame:
-		_copy_sheet(_sheet, _sheet_prev)
-		_sheet_prev.visible = _frame >= 0
+	var continuing_run := _state == "run" and _frame >= 0 and _sheet.texture == RUN_SHEET
+	if frame != _frame or _sheet.texture != texture:
+		if continuing_run:
+			# Hard cuts keep the painted frames crisp. A crossfade ghosts the stride.
+			_sheet_prev.visible = false
+			_blend = 1.0
+		else:
+			_copy_sheet(_sheet, _sheet_prev)
+			_sheet_prev.visible = _frame >= 0 and _sheet.texture != null
+			_blend = 0.0
 		_frame = frame
-		_blend = 0.0 if _frame >= 0 else 1.0
 	_set_cell(_sheet, texture, frame)
+	_sheet.set_meta("anchor_x", _anchor_x(_state, frame))
 	_sheet.visible = true
 	var shown := _blend if _sheet_prev.visible else 1.0
 	_sheet.modulate.a = shown
@@ -479,6 +484,7 @@ func _copy_sheet(src: Sprite2D, dst: Sprite2D) -> void:
 		return
 	dst.texture = src.texture
 	dst.region_rect = src.region_rect
+	dst.set_meta("anchor_x", src.get_meta("anchor_x", FOOT.x))
 	dst.visible = true
 
 
@@ -488,6 +494,8 @@ func _set_cell(sprite: Sprite2D, texture: Texture2D, frame: int) -> void:
 
 
 func _texture_for(state: String) -> Texture2D:
+	if state == "run":
+		return RUN_SHEET
 	if state == "dash":
 		return DASH_SHEET
 	if state == "roll":
@@ -496,6 +504,8 @@ func _texture_for(state: String) -> Texture2D:
 
 
 func _frame_count(state: String) -> int:
+	if state == "run":
+		return 8
 	if state == "dash":
 		return 7
 	if state == "roll":
@@ -503,8 +513,19 @@ func _frame_count(state: String) -> int:
 	return 6
 
 
+func _anchor_x(state: String, frame: int) -> float:
+	if state == "run":
+		return RUN_HEAD_X[clampi(frame, 0, RUN_HEAD_X.size() - 1)]
+	return FOOT.x
+
+
 func _frame_for(state: String, phase: float) -> int:
 	match state:
+		"run":
+			var t := fmod(_run_time / RUN_CYCLE, 1.0)
+			if t < 0.0:
+				t += 1.0
+			return int(t * 8.0) % 8
 		"takeoff":
 			return 0
 		"rise":

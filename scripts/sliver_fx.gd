@@ -22,16 +22,19 @@ const GOLD_FLASH := preload("res://shaders/gold_flash.gdshader")
 
 var _jobs: Array = []
 var _gold: ShaderMaterial
+var _hot: CanvasItemMaterial
 
 
 func _ready() -> void:
 	_gold = ShaderMaterial.new()
 	_gold.shader = GOLD_FLASH
+	_hot = CanvasItemMaterial.new()
+	_hot.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 
 
 func play(from: Vector2, to: Vector2) -> void:
-	var flash := _core(FLASH, from, 0.34)
-	var burst := _core(BURST, from, 0.22)
+	var flash := _hot_sprite(FLASH, from, 0.42)
+	var burst := _hot_sprite(BURST, from, 0.24)
 	var petals: Array = []
 	for i in 8:
 		var petal := _sprite(PETALS[i % PETALS.size()], from, randf_range(0.42, 0.62))
@@ -58,20 +61,20 @@ func _sprite(texture: Texture2D, at: Vector2, scale: float) -> Sprite2D:
 	sprite.centered = true
 	sprite.position = at
 	sprite.scale = Vector2(scale, scale)
-	# Mix, not add. Additive gold on a bright sky still clips to white.
 	sprite.material = _gold
 	add_child(sprite)
 	return sprite
 
 
-func _core(texture: Texture2D, at: Vector2, scale: float) -> Sprite2D:
+func _hot_sprite(texture: Texture2D, at: Vector2, scale: float) -> Sprite2D:
 	var sprite := Sprite2D.new()
 	sprite.texture = texture
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.centered = true
 	sprite.position = at
 	sprite.scale = Vector2(scale, scale)
-	sprite.material = _gold
+	sprite.material = _hot
+	sprite.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	add_child(sprite)
 	return sprite
 
@@ -94,7 +97,7 @@ func _fade_flash(job: Dictionary, t: float) -> void:
 	var flash: Sprite2D = job["flash"]
 	if is_instance_valid(flash):
 		var u := clampf(t / 0.14, 0.0, 1.0)
-		flash.scale = Vector2.ONE * lerpf(0.22, 0.42, u)
+		flash.scale = Vector2.ONE * lerpf(0.28, 0.62, u)
 		flash.modulate = Color(1.0, 1.0, 1.0, 1.0 - u)
 		if u >= 1.0:
 			flash.queue_free()
