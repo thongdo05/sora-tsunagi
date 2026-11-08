@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WorldBackdrop" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world_backdrop.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+world_id = "lanternfall"
+sky_color = Color(0.16, 0.07, 0.04, 1)
+art_note = "No panels yet. Follows Moonheld and leads back to Glassfall. Add far_panels, mid_panels, and near_panels in order."
+reuse_until = 4

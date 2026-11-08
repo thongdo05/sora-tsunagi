@@ -283,6 +283,7 @@ func _build() -> void:
 	add_child(world)
 
 	var backdrop = preload("res://scripts/backdrop.gd").new()
+	backdrop.name = "Backdrop"
 	world.add_child(backdrop)
 
 	track = GlassTrack.new()

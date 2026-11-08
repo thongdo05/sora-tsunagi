@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WorldLoop" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world_loop.gd" id="1_script"]
+[ext_resource type="Resource" path="res://assets/worlds/glassfall_backdrop.tres" id="2_glass"]
+[ext_resource type="Resource" path="res://assets/worlds/moonheld_backdrop.tres" id="3_moon"]
+[ext_resource type="Resource" path="res://assets/worlds/lanternfall_backdrop.tres" id="4_lantern"]
+
+[resource]
+script = ExtResource("1_script")
+worlds = Array[WorldBackdrop]([ExtResource("2_glass"), ExtResource("3_moon"), ExtResource("4_lantern")])

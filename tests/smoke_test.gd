@@ -58,6 +58,7 @@ func _run() -> void:
 		_fail("density curve does not reach the end of the ramp")
 	if pace.hit_stop_ms < 60 or pace.hit_stop_ms > 90:
 		_fail("hit stop %sms is outside the felt range" % pace.hit_stop_ms)
+	_check_backdrop(run)
 	if run.state == RunRoot.GAME_OVER:
 		run.state = RunRoot.PLAYING
 	run.lives = maxi(run.lives, 2)
@@ -186,6 +187,57 @@ func _save(path: String) -> void:
 		return
 	image.save_png(path)
 	print("saved ", path, " ", image.get_width(), "x", image.get_height())
+
+
+func _check_backdrop(run: RunRoot) -> void:
+	var loop := load("res://assets/worlds/world_loop.tres") as WorldLoop
+	if loop == null or loop.worlds.size() != 3:
+		_fail("world loop should be Glassfall, Moonheld, Lanternfall")
+		return
+	var ids: Array[String] = []
+	for world in loop.worlds:
+		ids.append(world.world_id)
+	if ids != ["glassfall", "moonheld", "lanternfall"]:
+		_fail("world loop order %s" % str(ids))
+	var glass := loop.worlds[0]
+	if glass.far_panels.size() != 1 or not glass.reuses("far"):
+		_fail("glassfall should still be the single Moonheld plate in reuse")
+	var first: Dictionary = loop.resolve("far", 0)
+	var second: Dictionary = loop.resolve("far", 1)
+	if first.get("texture") == null or first.get("texture") != second.get("texture"):
+		_fail("reuse should repeat the one far panel")
+	elif bool(first.get("flip")) or not bool(second.get("flip")):
+		_fail("reuse should mirror every other copy")
+	elif str(first.get("world").world_id) != "glassfall":
+		_fail("reuse stayed on %s" % first.get("world").world_id)
+	var tex: Texture2D = first.get("texture")
+	var long := WorldBackdrop.new()
+	long.world_id = "glassfall-long"
+	long.reuse_until = 4
+	long.far_panels = [tex, tex, tex, tex]
+	var nxt := WorldBackdrop.new()
+	nxt.world_id = "moonheld-next"
+	nxt.reuse_until = 4
+	nxt.far_panels = [tex]
+	var chain := WorldLoop.new()
+	chain.worlds = [long, nxt]
+	var at_end: Dictionary = chain.resolve("far", 3)
+	var handed: Dictionary = chain.resolve("far", 4)
+	if str(at_end.get("world").world_id) != "glassfall-long":
+		_fail("panel 3 should stay on the first world")
+	elif str(handed.get("world").world_id) != "moonheld-next":
+		_fail("panel 4 should cross into the next world, got %s" % handed.get("world").world_id)
+	var backdrop: Node = run.get_node_or_null("World/Backdrop")
+	if backdrop == null or backdrop.get("far_track") == null:
+		_fail("backdrop track is missing")
+		return
+	var view := run.get_viewport().get_visible_rect().size
+	backdrop.far_track.update(view, Vector2(280000, 500), 0.0)
+	var live: Array = backdrop.far_track.live_indices()
+	if live.is_empty() or int(live[0]) < 2:
+		_fail("panels behind the camera were not freed %s" % str(live))
+	elif int(live[live.size() - 1]) <= int(live[0]):
+		_fail("track did not keep a span of panels %s" % str(live))
 
 
 func _fail(message: String) -> void:
