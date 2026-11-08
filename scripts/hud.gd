@@ -4,12 +4,17 @@ const TUNING := preload("res://assets/tuning/game_tuning.tres")
 
 var score_text: String = "0"
 var score_plate: Control
+var sliver_plate: Control
 var combo_label: Label
 var lives_plate: Control
 var start_panel: PanelContainer
 var over_panel: PanelContainer
 var over_score: Label
 var over_detail: Label
+var _world_label: Label
+var _guardian_label: Label
+var _over_world: Label
+var _sliver_pop: float = 0.0
 var paused_label: Label
 var rotate_panel: Control
 var _root: Control
@@ -40,6 +45,15 @@ func _ready() -> void:
 	(score_plate as ScorePlate).font = _font
 	(score_plate as ScorePlate).caption_font = _font_small
 	_root.add_child(score_plate)
+
+	sliver_plate = SliverPlate.new()
+	sliver_plate.custom_minimum_size = Vector2(220, 72)
+	sliver_plate.size = Vector2(220, 72)
+	sliver_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	(sliver_plate as SliverPlate).font = _font
+	(sliver_plate as SliverPlate).caption_font = _font_small
+	(sliver_plate as SliverPlate).icon = preload("res://assets/sprites/slivers/sliver_02.webp")
+	_root.add_child(sliver_plate)
 
 	combo_label = Label.new()
 	combo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -72,7 +86,10 @@ func _ready() -> void:
 	start_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	start_panel.add_child(start_box)
 	start_box.add_child(_label("SORA TSUNAGI", 48, Color("fff1d8")))
-	start_box.add_child(_label("GLASSFALL", 22, Color("ffb34f")))
+	_world_label = _label("MOONHELD", 22, Color("ffb34f"))
+	start_box.add_child(_world_label)
+	_guardian_label = _label("Pelagic Regent", 18, Color("e7c99a"))
+	start_box.add_child(_guardian_label)
 	start_box.add_child(_spacer(10))
 	start_box.add_child(_label("Left half — tap to jump, tap again to double jump.", 22, Color("fff1d8")))
 	start_box.add_child(_label("Hold the left half to glide.", 22, Color("fff1d8")))
@@ -86,17 +103,18 @@ func _ready() -> void:
 
 	over_panel = _panel()
 	over_panel.set_anchors_preset(Control.PRESET_CENTER)
-	over_panel.offset_left = -280
-	over_panel.offset_top = -210
-	over_panel.offset_right = 280
-	over_panel.offset_bottom = 210
+	over_panel.offset_left = -300
+	over_panel.offset_top = -250
+	over_panel.offset_right = 300
+	over_panel.offset_bottom = 250
 	over_panel.visible = false
 	var over_box := VBoxContainer.new()
 	over_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	over_box.add_theme_constant_override("separation", 6)
 	over_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	over_panel.add_child(over_box)
-	over_box.add_child(_label("GLASSFALL", 18, Color("ffb34f")))
+	_over_world = _label("MOONHELD", 18, Color("ffb34f"))
+	over_box.add_child(_over_world)
 	over_box.add_child(_label("RUN OVER", 54, Color("fff1d8")))
 	over_score = _label("0", 64, Color("ffd275"))
 	over_box.add_child(over_score)
@@ -138,6 +156,11 @@ func _process(delta: float) -> void:
 	var punch := _combo_pop * _combo_pop
 	var scale := minf(base + punch * 0.5, 2.2)
 	combo_label.scale = Vector2.ONE * scale
+	if _sliver_pop > 0.0:
+		_sliver_pop = maxf(0.0, _sliver_pop - delta * 3.2)
+	if sliver_plate:
+		var sliver_scale := 1.0 + _sliver_pop * _sliver_pop * 0.16
+		sliver_plate.scale = Vector2.ONE * sliver_scale
 	if _break > 0.0:
 		_break = maxf(0.0, _break - delta)
 		combo_label.modulate = Color(1, 0.42, 0.38)
@@ -204,10 +227,41 @@ func show_start(on: bool) -> void:
 	start_panel.visible = on
 
 
-func show_game_over(score: int, kills: int, best: int) -> void:
+func set_world(display: String, guardian: String) -> void:
+	var title := display.to_upper() if display != "" else "MOONHELD"
+	if _world_label:
+		_world_label.text = title
+	if _over_world:
+		_over_world.text = title
+	if _guardian_label:
+		_guardian_label.text = guardian
+	if score_plate is ScorePlate:
+		(score_plate as ScorePlate).world_name = title
+		score_plate.queue_redraw()
+
+
+func world_title() -> String:
+	return _world_label.text if _world_label else ""
+
+
+func set_slivers(count: int, punch: bool) -> void:
+	if sliver_plate is SliverPlate:
+		(sliver_plate as SliverPlate).count = count
+		sliver_plate.queue_redraw()
+	if punch:
+		_sliver_pop = 1.0
+
+
+func sliver_anchor() -> Vector2:
+	if sliver_plate == null:
+		return Vector2(80, 150)
+	return sliver_plate.position + Vector2(36, 36)
+
+
+func show_game_over(score: int, kills: int, best: int, slivers: int, lifetime: int) -> void:
 	over_panel.visible = true
 	over_score.text = _commas(score)
-	over_detail.text = "%d KILLS    BEST %s" % [kills, _commas(best)]
+	over_detail.text = "%d KILLS    BEST %s\n%d SLIVERS    LIFETIME %s" % [kills, _commas(best), slivers, _commas(lifetime)]
 	start_panel.visible = false
 
 
@@ -223,6 +277,10 @@ func _layout(inset: Vector4) -> void:
 	var view := get_viewport().get_visible_rect().size
 	if score_plate:
 		score_plate.position = Vector2(inset.x, inset.y)
+		score_plate.pivot_offset = Vector2.ZERO
+	if sliver_plate:
+		sliver_plate.position = Vector2(inset.x, inset.y + score_plate.size.y + 10.0)
+		sliver_plate.pivot_offset = Vector2(28, 36)
 	if lives_plate:
 		lives_plate.position = Vector2(view.x - inset.z - lives_plate.size.x, inset.y)
 	if combo_label:
@@ -231,8 +289,8 @@ func _layout(inset: Vector4) -> void:
 		combo_label.position = Vector2(view.x * 0.5 - width * 0.5, inset.y - 6.0)
 		combo_label.pivot_offset = Vector2(width * 0.5, 58.0)
 	if over_panel:
-		over_panel.offset_top = -210.0 - inset.w * 0.15
-		over_panel.offset_bottom = 210.0 - inset.w * 0.35
+		over_panel.offset_top = -250.0 - inset.w * 0.15
+		over_panel.offset_bottom = 250.0 - inset.w * 0.35
 
 
 func _insets() -> Vector4:
@@ -348,6 +406,7 @@ class ScorePlate extends Control:
 	var font: Font
 	var caption_font: Font
 	var text: String = "0"
+	var world_name: String = "MOONHELD"
 
 	func _draw() -> void:
 		var plate := Rect2(Vector2.ZERO, size)
@@ -358,8 +417,31 @@ class ScorePlate extends Control:
 		if caption == null:
 			return
 		draw_string(caption, Vector2(18, 30), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("e7c99a"))
+		if world_name != "":
+			var title_width := caption.get_string_size(world_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+			draw_string(caption, Vector2(size.x - 18 - title_width, 30), world_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("ffb34f"))
 		var face := font if font != null else caption
 		draw_string(face, Vector2(16, 78), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 48, Color("fff6e8"))
+
+
+class SliverPlate extends Control:
+	var font: Font
+	var caption_font: Font
+	var count: int = 0
+	var icon: Texture2D
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.02, 0.08, 0.62))
+		draw_rect(Rect2(0, 0, 46, 3), Color("ffd275"))
+		draw_rect(Rect2(0, size.y - 3, size.x, 3), Color("ffb34f"))
+		if icon:
+			draw_texture_rect(icon, Rect2(12, 16, 40, 40), false)
+		var caption := caption_font if caption_font != null else font
+		var face := font if font != null else caption
+		if caption:
+			draw_string(caption, Vector2(60, 24), "SLIVERS", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("e7c99a"))
+		if face:
+			draw_string(face, Vector2(58, 56), str(count), HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color("fff6e8"))
 
 
 class LivesPlate extends Control:

@@ -8,3 +8,4 @@
 [resource]
 script = ExtResource("1_script")
 worlds = Array[WorldBackdrop]([ExtResource("2_glass"), ExtResource("3_moon"), ExtResource("4_lantern")])
+start_id = "moonheld"

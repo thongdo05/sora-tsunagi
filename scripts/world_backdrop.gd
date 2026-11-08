@@ -11,6 +11,10 @@ extends Resource
 ## and the layer crossfades into the next world in world_loop.tres.
 
 @export var world_id: String = ""
+## Player-facing name. Moonheld, Glassfall, Lanternfall.
+@export var display_name: String = ""
+## Rift Guardian for this world. Moonheld is Pelagic Regent.
+@export var guardian_name: String = ""
 @export var sky_color: Color = Color(0.04, 0.08, 0.16, 1)
 ## Shown in the editor. The first playable plate can differ from world_id.
 @export_multiline var art_note: String = ""

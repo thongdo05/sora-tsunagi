@@ -32,8 +32,9 @@ func _ready() -> void:
 	_motes = Motes.new()
 	_motes.z_index = 3
 	add_child(_motes)
-	if not LOOP.worlds.is_empty():
-		_sky.color = LOOP.worlds[0].sky_color
+	var opening := LOOP.starting_world()
+	if opening != null:
+		_sky.color = opening.sky_color
 
 
 func _process(_delta: float) -> void:

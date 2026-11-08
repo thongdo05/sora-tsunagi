@@ -5,6 +5,8 @@
 [resource]
 script = ExtResource("1_script")
 world_id = "glassfall"
+display_name = "Glassfall"
+guardian_name = "Meridian Exile"
 sky_color = Color(0.1, 0.07, 0.14, 1)
-art_note = "No Glassfall plates yet. The run skips an empty world, so playback opens on Moonheld. Add far_panels, mid_panels, and near_panels in the same order when the art arrives."
+art_note = "No Glassfall plates yet. world_loop.tres still lists this first, and start_id plays Moonheld until these plates exist. Add far_panels, mid_panels, and near_panels in the same order when the art arrives."
 reuse_until = 4

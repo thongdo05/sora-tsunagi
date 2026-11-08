@@ -41,9 +41,21 @@ func _run() -> void:
 			await process_frame
 			_save(shot)
 		kills_before = run.kills
-	print("BOT score=%s kills=%s lives=%s state=%s platforms=%s monsters=%s" % [
-		int(run.score), run.kills, run.lives, run.state, run.track.platforms.size(), run.track.monsters.size()
+	print("BOT score=%s kills=%s lives=%s state=%s platforms=%s monsters=%s slivers=%s" % [
+		int(run.score), run.kills, run.lives, run.state, run.track.platforms.size(), run.track.monsters.size(), run.slivers_run
 	])
+	if run.hud.world_title() != "MOONHELD":
+		_fail("world title is %s" % run.hud.world_title())
+	if run.track.slivers.is_empty() and run.slivers_run < 1:
+		_fail("no sky slivers were placed")
+	if run.slivers_run < 1 and not run.track.slivers.is_empty():
+		run.player.global_position = run.track.slivers[0].global_position + Vector2(0, 90)
+		await process_frame
+		await process_frame
+	if run.slivers_run < 1:
+		_fail("a sliver on the player was not collected")
+	if run.slivers_lifetime < run.slivers_run:
+		_fail("lifetime slivers did not keep the run count")
 	if run.score <= 0.0:
 		_fail("score did not increase")
 	var pace := preload("res://assets/tuning/game_tuning.tres")
@@ -202,6 +214,15 @@ func _check_backdrop(run: RunRoot) -> void:
 	var glass := loop.worlds[0]
 	if not glass.far_panels.is_empty():
 		_fail("glassfall has no plates yet, found %s" % glass.far_panels.size())
+	if loop.start_id != "moonheld":
+		_fail("the run should start at moonheld, start_id=%s" % loop.start_id)
+	var opening := loop.starting_world()
+	if opening == null or opening.world_id != "moonheld" or opening.display_name != "Moonheld":
+		_fail("starting world should be named Moonheld")
+	elif opening.guardian_name != "Pelagic Regent":
+		_fail("Moonheld's guardian should be Pelagic Regent, got %s" % opening.guardian_name)
+	if glass.guardian_name != "Meridian Exile" or loop.worlds[2].guardian_name != "Veil Archon":
+		_fail("guardian map drifted")
 	var moon := loop.worlds[1]
 	if moon.far_panels.size() != 6 or moon.mid_panels.size() != 6 or moon.reuses("far"):
 		_fail("moonheld should be a 6-panel chain")

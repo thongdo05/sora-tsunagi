@@ -6,6 +6,17 @@ extends Resource
 ## on that world's WorldBackdrop.
 
 @export var worlds: Array[WorldBackdrop] = []
+## Playback starts here. The array order stays Glassfall, Moonheld, Lanternfall.
+@export var start_id: String = "moonheld"
+
+
+func starting_world() -> WorldBackdrop:
+	for world in worlds:
+		if world != null and world.world_id == start_id:
+			return world
+	if worlds.is_empty():
+		return null
+	return worlds[0]
 
 
 func next_after(world: WorldBackdrop) -> WorldBackdrop:
@@ -52,7 +63,9 @@ func _layout_forward(layer: String, index: int) -> Dictionary:
 	}
 	if worlds.is_empty():
 		return empty
-	var world: WorldBackdrop = worlds[0]
+	var world: WorldBackdrop = starting_world()
+	if world == null:
+		return empty
 	var art_x := 0.0
 	var i := 0
 	var guard := 0

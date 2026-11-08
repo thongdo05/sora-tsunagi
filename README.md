@@ -4,7 +4,7 @@ First playable prototype of Thong Do’s endless 2D anime dash game, plus the de
 
 This is a separate project from **Reincarnated as WHAT?!** and **Kinetic Arm**.
 
-Glassfall is the only world in this build. It is a landscape runner meant to prove run, jump, dash, and dash-or-die on a phone. Guardians, shards, the world loop, the other fighters, music, ads, and the leaderboard are out of scope.
+This build starts in Moonheld. It is a landscape runner meant to prove run, jump, dash, and dash-or-die on a phone. The world loop order is Glassfall, Moonheld, Lanternfall, and this run begins at Moonheld. Glassfall and Lanternfall still have no plates. Sky Slivers are pickups. Guardians are named but not fought yet. The other fighters, music, ads, and the leaderboard are out of scope.
 
 - [Design draft](docs/DESIGN.md) (latest, November 7 2026)
 - [Build plan v1](docs/BUILD_PLAN_V1.md)
@@ -60,7 +60,8 @@ Jump height is `jump_velocity² / (2 × gravity)`. Dash length is `dash_distance
 ## What is placeholder
 
 - The pirate is the single attack-pose cutout. At rest a mask recolors the coated arm to skin and hides the painted lightning. The black arm and red-black sparks come back only during the dash. A small patch of the original coating can remain where the sleeve meets the forearm. Bob and squash are code, not new frames.
-- Platforms are the Moonheld S3 pieces in `assets/worlds/moonheld/` (docks, coral ledges, stone slabs, buoys). Monsters are still drawn shapes. The backdrop streams panels from `assets/worlds/world_loop.tres` (Glassfall, then Moonheld, then Lanternfall). The only panel so far is the Moonheld S3 plate on the Glassfall entry.
+- Platforms are the Moonheld dock pieces in `assets/worlds/moonheld/` (docks, coral ledges, stone slabs, buoys). Monsters are still drawn shapes. The backdrop streams the six-panel Moonheld chain from `assets/worlds/world_loop.tres`. That resource still lists Glassfall, then Moonheld, then Lanternfall. `start_id` is `moonheld`.
+- Sky Slivers sit on jump and dash arcs. Collecting one plays a short chime that steps up in pitch. The HUD counts the run. The results screen shows that count and the lifetime total saved in `user://sora_progress.cfg`.
 - UI is type and flat panels. There is no music.
 
 Concept art stays out of this repo. The Glassfall look mock is a reference only and is not committed.

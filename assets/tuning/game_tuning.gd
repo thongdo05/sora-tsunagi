@@ -1,7 +1,7 @@
 class_name GameTuning
 extends Resource
 
-## Every gameplay number for the Glassfall prototype lives here.
+## Every gameplay number for this build lives here. The run starts in Moonheld.
 ## Edit game_tuning.tres and run again. Units are pixels and seconds.
 ## Full jump height is jump_velocity^2 / (2 * rise_gravity). A tap cuts that
 ## with jump_cut_scale. Falls use fall_gravity, so the arc is not a float.
@@ -146,6 +146,21 @@ extends Resource
 @export var lives_per_run: int = 3
 @export var points_per_pixel: float = 0.12
 @export var kill_points: int = 100
+
+@export_group("Slivers")
+## Slivers along one jump arc, not counting a risky extra or a dash pair.
+@export var sliver_jump_count: int = 4
+## Height of the jump arc above the deck chord, in pixels.
+@export var sliver_peak: float = 170.0
+## A higher sliver that asks for a double jump.
+@export var sliver_risky_peak: float = 290.0
+@export var sliver_risky_chance: float = 0.42
+## Chance a wide gap also gets a flat dash-line pair.
+@export var sliver_dash_chance: float = 0.28
+@export var sliver_pickup: float = 56.0
+## Seconds of quiet before a collect streak's pitch resets.
+@export var sliver_streak_gap: float = 0.55
+@export var sliver_bob: float = 7.0
 
 
 ## 0 at the start of a run, 1 once pace_ramp_seconds has elapsed. Shared by speed and density.

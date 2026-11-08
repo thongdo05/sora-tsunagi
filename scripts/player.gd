@@ -239,7 +239,9 @@ func _launch(second: bool) -> void:
 		_doubling = 0.42
 		_rolling = 0.0
 	if audio != null:
-		audio.play("jump", 0.07 if second else 0.0)
+		# jump_air_opt1 is a little hotter than the dash. -3 dB sits it with the other hits.
+		# The director adds a small random pitch so the same hop does not drill.
+		audio.play("jump", 0.05 if second else 0.0, -3.0)
 	_puff()
 
 

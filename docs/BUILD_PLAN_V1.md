@@ -1,5 +1,10 @@
 # Sora Tsunagi — Build Plan v1 (first playable)
-Status: PROPOSED 2026-11-07, waiting on Thong's approval.
+Status: IN PROGRESS, 2026-11-08. The phone test is on PR #4 and is not merged.
+
+This build starts in **Moonheld** (guardian: Pelagic Regent). The locked loop order is still Glassfall, then Moonheld, then Lanternfall, then Glassfall again. Glassfall and Lanternfall have no plates yet. Moonheld is the six-panel chain. Sky Slivers are collected along jump and dash lines, counted for the run, shown on the results screen, and saved as a lifetime total under `user://`. There is no shop. Jump uses Thong's air-kick, `jump_air_opt1`. The web export stays single-threaded.
+
+## Original proposal
+Status was PROPOSED 2026-11-07, waiting on Thong's approval. The list below is that proposal. The header above is the build as it stands.
 
 ## Goal
 A first playable that proves the core feel: run, jump, dash, kill. Nothing else.

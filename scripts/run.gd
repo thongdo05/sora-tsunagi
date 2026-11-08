@@ -26,6 +26,8 @@ var kills: int = 0
 var combo: int = 0
 var lives: int = 3
 var best: int = 0
+var slivers_run: int = 0
+var slivers_lifetime: int = 0
 
 var controls: Variant
 var player: GlassRunner
@@ -35,6 +37,10 @@ var audio: Variant
 var camera: Camera2D
 
 var _last_x: float = 0.0
+var _sliver_streak: int = 0
+var _sliver_ms: int = -10000
+var _world_shown: String = ""
+var _fx: Node2D
 var _run_origin_ms: int = 0
 var _respawn_until: int = 0
 var _hitstop_until: int = 0
@@ -58,7 +64,7 @@ func _ready() -> void:
 	add_to_group("run")
 	process_physics_priority = 20
 	lives = TUNING.lives_per_run
-	best = _load_best()
+	_load_progress()
 	_build()
 	player.drive_speed = 0.0
 	track.update(player.global_position.x, TUNING.run_speed_start, 0.0)
@@ -67,6 +73,8 @@ func _ready() -> void:
 	hud.set_lives(lives)
 	hud.set_score(0)
 	hud.set_combo(0, false)
+	hud.set_slivers(0, false)
+	_apply_world_title(true)
 	if auto_start:
 		auto_start = false
 		start_run()
@@ -97,9 +105,11 @@ func _process(delta: float) -> void:
 		if dx > 0.0:
 			score += dx * TUNING.points_per_pixel
 		_last_x = player.global_position.x
+		_collect_slivers()
 		if player.global_position.y > _kill_y():
 			on_life_lost(true)
 	_place_camera()
+	_apply_world_title(false)
 	_update_flash(delta)
 	hud.set_score(score)
 	_maybe_screenshot()
@@ -157,6 +167,9 @@ func start_run() -> void:
 	score = 0.0
 	kills = 0
 	combo = 0
+	slivers_run = 0
+	_sliver_streak = 0
+	_sliver_ms = -10000
 	run_speed = TUNING.run_speed_start
 	_run_origin_ms = Time.get_ticks_msec()
 	_slowmo_until = 0
@@ -167,6 +180,7 @@ func start_run() -> void:
 	hud.hide_game_over()
 	hud.set_lives(lives)
 	hud.set_combo(0, false)
+	hud.set_slivers(0, false)
 	player.locked = false
 	player.visible = true
 	player.invuln = 0.0
@@ -257,8 +271,8 @@ func _game_over() -> void:
 	var final_score := int(score)
 	if final_score > best:
 		best = final_score
-		_save_best()
-	hud.show_game_over(final_score, kills, best)
+	_save_progress()
+	hud.show_game_over(final_score, kills, best, slivers_run, slivers_lifetime)
 
 
 func _finish_respawn() -> void:
@@ -299,6 +313,13 @@ func _build() -> void:
 	audio.name = "Audio"
 	add_child(audio)
 	audio.add_to_group("audio")
+
+	var fx_layer := CanvasLayer.new()
+	fx_layer.layer = 9
+	fx_layer.name = "SliverFX"
+	add_child(fx_layer)
+	_fx = preload("res://scripts/sliver_fx.gd").new()
+	fx_layer.add_child(_fx)
 
 	player = GlassRunner.new()
 	player.name = "Player"
@@ -491,14 +512,66 @@ func _maybe_screenshot() -> void:
 		image.save_png(path)
 
 
-func _load_best() -> int:
+func _load_progress() -> void:
 	var file := ConfigFile.new()
-	if file.load("user://glassfall_best.cfg") == OK:
-		return int(file.get_value("run", "best", 0))
-	return 0
+	if file.load("user://sora_progress.cfg") == OK:
+		best = int(file.get_value("run", "best", 0))
+		slivers_lifetime = int(file.get_value("slivers", "lifetime", 0))
+		return
+	var legacy := ConfigFile.new()
+	if legacy.load("user://glassfall_best.cfg") == OK:
+		best = int(legacy.get_value("run", "best", 0))
 
 
-func _save_best() -> void:
+func _save_progress() -> void:
 	var file := ConfigFile.new()
 	file.set_value("run", "best", best)
-	file.save("user://glassfall_best.cfg")
+	file.set_value("slivers", "lifetime", slivers_lifetime)
+	file.save("user://sora_progress.cfg")
+
+
+func _collect_slivers() -> void:
+	if player == null or track == null:
+		return
+	var center := player.global_position + Vector2(24.0, -96.0)
+	var hits := track.collect_along(center)
+	if hits.is_empty():
+		return
+	var now := Time.get_ticks_msec()
+	for at in hits:
+		if now - _sliver_ms > int(TUNING.sliver_streak_gap * 1000.0):
+			_sliver_streak = 0
+		_sliver_streak += 1
+		_sliver_ms = now
+		slivers_run += 1
+		slivers_lifetime += 1
+		var step := float(mini(_sliver_streak - 1, 7)) * 0.07
+		if audio != null:
+			audio.play("chime", step, -6.0)
+		hud.set_slivers(slivers_run, true)
+		if _fx != null:
+			_fx.play(_screen_of(at), hud.sliver_anchor())
+	_save_progress()
+
+
+func _screen_of(world_pos: Vector2) -> Vector2:
+	var view := get_viewport().get_visible_rect().size
+	var cam := camera.global_position
+	if camera:
+		cam += camera.offset
+	return world_pos - cam + view * 0.5
+
+
+func _apply_world_title(force: bool) -> void:
+	var world: WorldBackdrop = null
+	var backdrop := get_node_or_null("World/Backdrop")
+	if backdrop != null and backdrop.get("far_track") != null and backdrop.far_track.center_world != null:
+		world = backdrop.far_track.center_world
+	if world == null:
+		world = preload("res://assets/worlds/world_loop.tres").starting_world()
+	if world == null:
+		return
+	if not force and world.world_id == _world_shown:
+		return
+	_world_shown = world.world_id
+	hud.set_world(world.display_name, world.guardian_name)
