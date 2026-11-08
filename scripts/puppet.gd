@@ -117,18 +117,28 @@ func _build() -> void:
 	add_child(hip)
 	_hip = hip
 
-	var back_thigh := _leg("back_thigh", THIGH_TEX, Vector2(-70, 18))
-	var back_shin := _leg("back_shin", SHIN_TEX, Vector2(6, 70))
+	# Legs go on first so the coat covers the joint. The pivots sit inside the pant cuff.
+	var back_thigh := _leg("back_thigh", THIGH_TEX, Vector2(-42, -14))
+	var back_shin := _leg("back_shin", SHIN_TEX, Vector2(2, 20))
 	back_thigh.add_child(back_shin)
 	hip.add_child(back_thigh)
 
+	var front_thigh := _leg("front_thigh", THIGH_TEX, Vector2(30, -14))
+	var front_shin := _leg("front_shin", SHIN_TEX, Vector2(2, 20))
+	front_thigh.add_child(front_shin)
+	hip.add_child(front_thigh)
+
+	# Rotate the coat around the hip, not the top-left of the texture, or the hem leaves the boots.
+	var torso_pivot := Node2D.new()
+	torso_pivot.name = "torso_pivot"
+	hip.add_child(torso_pivot)
 	var torso := Sprite2D.new()
 	torso.name = "torso"
 	torso.texture = TORSO_TEX
 	torso.centered = false
 	torso.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	torso.position = Vector2(2, 47) - hip_at
-	hip.add_child(torso)
+	torso_pivot.add_child(torso)
 
 	var head_pivot := Node2D.new()
 	head_pivot.name = "head_pivot"
@@ -146,11 +156,6 @@ func _build() -> void:
 	var off_fore := _arm("off_fore", FORE_TEX, Vector2(UPPER_TEX.get_width() - 8, 8), false)
 	off_upper.add_child(off_fore)
 	hip.add_child(off_upper)
-
-	var front_thigh := _leg("front_thigh", THIGH_TEX, Vector2(55, 12))
-	var front_shin := _leg("front_shin", SHIN_TEX, Vector2(6, 70))
-	front_thigh.add_child(front_shin)
-	hip.add_child(front_thigh)
 
 	var punch_upper := _arm("punch_upper", UPPER_TEX, Vector2(500, 220) - hip_at, false)
 	_punch_fore = _arm("punch_fore", FORE_TEX, Vector2(UPPER_TEX.get_width() - 10, 6), true)
@@ -181,7 +186,8 @@ func _leg(node_name: String, texture: Texture2D, at: Vector2) -> Node2D:
 	sprite.texture = texture
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = Vector2(-texture.get_width() * 0.5, 0)
+	# The top of the limb tucks under the coat. The rest hangs toward the next joint.
+	sprite.position = Vector2(-texture.get_width() * 0.42, -16.0)
 	pivot.add_child(sprite)
 	return pivot
 
@@ -238,8 +244,8 @@ func _run_anim() -> Animation:
 	var anim := _new_anim(0.48, true)
 	# High knees, forward lean, arms driving opposite the legs. Contact at 0 and 0.24.
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.48, 0.0]])
-	_keys(anim, "hip:position:y", [[0.0, -158.0], [0.12, -170.0], [0.24, -156.0], [0.36, -170.0], [0.48, -158.0]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.22], [0.24, -0.16], [0.48, -0.22]])
+	_keys(anim, "hip:position:y", [[0.0, -108.0], [0.12, -118.0], [0.24, -106.0], [0.36, -118.0], [0.48, -108.0]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.22], [0.24, -0.16], [0.48, -0.22]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.08], [0.24, 0.04], [0.48, 0.08]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, -0.95], [0.12, -0.15], [0.24, 0.85], [0.36, 0.05], [0.48, -0.95]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 0.35], [0.12, 1.15], [0.24, 0.25], [0.36, 0.9], [0.48, 0.35]])
@@ -257,7 +263,7 @@ func _takeoff_anim() -> Animation:
 	var anim := _new_anim(0.07, false)
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.07, 0.0]])
 	_keys(anim, "hip:position:y", [[0.0, -158.0], [0.035, -144.0], [0.07, -166.0]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.16], [0.035, -0.34], [0.07, -0.08]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.16], [0.035, -0.34], [0.07, -0.08]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.05], [0.07, -0.06]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, 0.2], [0.035, 0.7], [0.07, -0.4]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 0.4], [0.035, 1.3], [0.07, 0.5]])
@@ -278,7 +284,7 @@ func _air_anim(kind: String, tucked: bool) -> Animation:
 	var lean := -0.05 if tucked else 0.02
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.2, 0.0]])
 	_keys(anim, "hip:position:y", [[0.0, -166.0], [0.2, -166.0]])
-	_keys(anim, "hip/torso:rotation", [[0.0, lean], [0.2, lean]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, lean], [0.2, lean]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, -0.04], [0.2, -0.04]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, thigh], [0.2, thigh]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, shin], [0.2, shin]])
@@ -297,7 +303,7 @@ func _fall_anim() -> Animation:
 	var anim := _new_anim(0.24, true)
 	_keys(anim, "hip:position:y", [[0.0, -160.0], [0.24, -160.0]])
 	_keys(anim, "hip:rotation", [[0.0, 0.12], [0.24, 0.12]])
-	_keys(anim, "hip/torso:rotation", [[0.0, 0.08], [0.24, 0.08]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, 0.08], [0.24, 0.08]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.1], [0.24, 0.1]])
 	# Legs reach for the landing.
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, -0.55], [0.24, -0.55]])
@@ -316,7 +322,7 @@ func _land_anim() -> Animation:
 	var anim := _new_anim(0.16, false)
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.16, 0.0]])
 	_keys(anim, "hip:position:y", [[0.0, -136.0], [0.08, -144.0], [0.16, -158.0]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.28], [0.16, -0.18]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.28], [0.16, -0.18]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.12], [0.16, 0.06]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, 0.55], [0.16, 0.1]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 1.45], [0.16, 0.5]])
@@ -334,7 +340,7 @@ func _roll_anim() -> Animation:
 	var anim := _new_anim(0.36, false)
 	_keys(anim, "hip:position:y", [[0.0, -138.0], [0.12, -68.0], [0.24, -58.0], [0.36, -158.0]])
 	_keys(anim, "hip:rotation", [[0.0, 0.2], [0.12, -1.6], [0.24, -3.4], [0.36, -6.2]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.4], [0.18, -0.2], [0.36, -0.18]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.4], [0.18, -0.2], [0.36, -0.18]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.3], [0.18, -0.2], [0.36, 0.05]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, 1.0], [0.18, 0.4], [0.36, -0.4]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 1.5], [0.18, 1.2], [0.36, 0.4]])
@@ -353,7 +359,7 @@ func _double_anim() -> Animation:
 	# Kick off, tuck, gainer-style rotation, then open toward the landing.
 	_keys(anim, "hip:position:y", [[0.0, -166.0], [0.2, -178.0], [0.42, -160.0]])
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.16, -1.4], [0.32, -3.6], [0.42, -5.2]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.1], [0.16, -0.3], [0.42, 0.05]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.1], [0.16, -0.3], [0.42, 0.05]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, -0.1], [0.2, 0.15], [0.42, 0.08]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, -0.8], [0.12, 1.1], [0.28, 0.9], [0.42, -0.4]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 0.2], [0.12, 1.5], [0.28, 1.3], [0.42, 0.4]])
@@ -372,7 +378,7 @@ func _dash_anim() -> Animation:
 	# Coil from the run, then the hip and shoulder throw the coated fist forward.
 	_keys(anim, "hip:position:y", [[0.0, -158.0], [0.07, -140.0], [0.18, -144.0], [0.34, -158.0]])
 	_keys(anim, "hip:rotation", [[0.0, 0.0], [0.07, 0.18], [0.16, -0.15], [0.34, 0.0]])
-	_keys(anim, "hip/torso:rotation", [[0.0, -0.2], [0.07, -0.55], [0.16, -1.15], [0.26, -0.7], [0.34, -0.22]])
+	_keys(anim, "hip/torso_pivot:rotation", [[0.0, -0.2], [0.07, -0.55], [0.16, -1.15], [0.26, -0.7], [0.34, -0.22]])
 	_keys(anim, "hip/head_pivot:rotation", [[0.0, 0.06], [0.08, 0.2], [0.18, -0.05], [0.34, 0.06]])
 	_keys(anim, "hip/front_thigh:rotation", [[0.0, -0.4], [0.08, 0.3], [0.18, -0.8], [0.34, -0.5]])
 	_keys(anim, "hip/front_thigh/front_shin:rotation", [[0.0, 0.6], [0.08, 1.1], [0.2, 0.35], [0.34, 0.4]])

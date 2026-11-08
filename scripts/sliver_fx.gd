@@ -18,19 +18,20 @@ const PETALS: Array[Texture2D] = [
 ]
 ## The trail art points up and to the right, about -38 degrees in y-down space.
 const TRAIL_ANGLE := -0.668
+const GOLD_FLASH := preload("res://shaders/gold_flash.gdshader")
 
 var _jobs: Array = []
-var _add: CanvasItemMaterial
+var _gold: ShaderMaterial
 
 
 func _ready() -> void:
-	_add = CanvasItemMaterial.new()
-	_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_gold = ShaderMaterial.new()
+	_gold.shader = GOLD_FLASH
 
 
 func play(from: Vector2, to: Vector2) -> void:
-	var flash := _sprite(FLASH, from, 0.26)
-	var burst := _sprite(BURST, from, 0.2)
+	var flash := _core(FLASH, from, 0.34)
+	var burst := _core(BURST, from, 0.22)
 	var petals: Array = []
 	for i in 8:
 		var petal := _sprite(PETALS[i % PETALS.size()], from, randf_range(0.42, 0.62))
@@ -57,9 +58,20 @@ func _sprite(texture: Texture2D, at: Vector2, scale: float) -> Sprite2D:
 	sprite.centered = true
 	sprite.position = at
 	sprite.scale = Vector2(scale, scale)
-	sprite.material = _add
-	# Additive white blows out. This keeps the sheet's flash honey-gold.
-	sprite.modulate = Color(1.0, 0.8, 0.42, 1.0)
+	# Mix, not add. Additive gold on a bright sky still clips to white.
+	sprite.material = _gold
+	add_child(sprite)
+	return sprite
+
+
+func _core(texture: Texture2D, at: Vector2, scale: float) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sprite.centered = true
+	sprite.position = at
+	sprite.scale = Vector2(scale, scale)
+	sprite.material = _gold
 	add_child(sprite)
 	return sprite
 
@@ -82,8 +94,8 @@ func _fade_flash(job: Dictionary, t: float) -> void:
 	var flash: Sprite2D = job["flash"]
 	if is_instance_valid(flash):
 		var u := clampf(t / 0.14, 0.0, 1.0)
-		flash.scale = Vector2.ONE * lerpf(0.18, 0.4, u)
-		flash.modulate.a = 1.0 - u
+		flash.scale = Vector2.ONE * lerpf(0.22, 0.42, u)
+		flash.modulate = Color(1.0, 1.0, 1.0, 1.0 - u)
 		if u >= 1.0:
 			flash.queue_free()
 			job["flash"] = null
@@ -91,7 +103,7 @@ func _fade_flash(job: Dictionary, t: float) -> void:
 	if is_instance_valid(burst):
 		var u := clampf(t / 0.36, 0.0, 1.0)
 		burst.scale = Vector2.ONE * lerpf(0.12, 0.34, u)
-		burst.modulate.a = (1.0 - u) * 0.9
+		burst.modulate = Color(1.0, 1.0, 1.0, (1.0 - u) * 0.95)
 		if u >= 1.0:
 			burst.queue_free()
 			job["burst"] = null
@@ -106,7 +118,8 @@ func _fly_petals(job: Dictionary, t: float, delta: float) -> void:
 		node.position += vel * delta
 		petal["vel"] = vel * 0.9
 		node.rotation += delta * 2.4
-		node.modulate.a = clampf(1.0 - t / 0.4, 0.0, 1.0)
+		var petal_a := clampf(1.0 - t / 0.4, 0.0, 1.0)
+		node.modulate = Color(1.0, 1.0, 1.0, petal_a)
 		if t > 0.4:
 			node.queue_free()
 			petal["node"] = null
@@ -123,7 +136,7 @@ func _fly_trail(job: Dictionary, t: float) -> void:
 		var dir := to - from
 		if dir.length_squared() > 4.0:
 			trail.rotation = dir.angle() - TRAIL_ANGLE
-		trail.modulate.a = sin(clampf(u, 0.0, 1.0) * PI) * 0.95
+		trail.modulate = Color(1.0, 1.0, 1.0, sin(clampf(u, 0.0, 1.0) * PI) * 0.95)
 		if u >= 1.0 and not bool(job["sparked"]):
 			job["sparked"] = true
 			var spark := _sprite(SPARK, to, 0.7)
@@ -133,7 +146,7 @@ func _fly_trail(job: Dictionary, t: float) -> void:
 	var spark: Sprite2D = job.get("spark")
 	if is_instance_valid(spark):
 		var su := clampf((t - 0.52) / 0.2, 0.0, 1.0)
-		spark.modulate.a = 1.0 - su
+		spark.modulate = Color(1.0, 1.0, 1.0, 1.0 - su)
 		spark.scale = Vector2.ONE * lerpf(0.55, 1.35, su)
 		if su >= 1.0:
 			spark.queue_free()
