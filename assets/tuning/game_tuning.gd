@@ -106,6 +106,10 @@ extends Resource
 @export var long_gap_chance: float = 0.16
 @export var gap_absolute_min: float = 110.0
 @export var gap_absolute_max: float = 640.0
+## After the opening platforms, this chance swaps in a buoy or a short dock.
+@export var short_platform_chance: float = 0.30
+@export var buoy_width: float = 210.0
+@export var plank_width: float = 370.0
 @export var spawn_ahead: float = 2800.0
 @export var despawn_behind: float = 1000.0
 

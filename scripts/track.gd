@@ -27,7 +27,12 @@ func update(focus_x: float, speed: float, density: float = 0.0) -> void:
 		var gap := _next_gap(speed, platform_index)
 		var width := _rng.randf_range(TUNING.platform_min_width, TUNING.platform_max_width)
 		if platform_index < 2:
-			width = max(width, 720.0)
+			width = max(width, 900.0)
+		elif _rng.randf() < TUNING.short_platform_chance:
+			if _rng.randf() < 0.46:
+				width = TUNING.buoy_width + _rng.randf_range(-18.0, 28.0)
+			else:
+				width = TUNING.plank_width + _rng.randf_range(-36.0, 48.0)
 		var top := _next_top()
 		next_x += gap
 		_add_platform(next_x, top, width)
@@ -119,6 +124,8 @@ func _add_platform(x: float, y: float, width: float) -> void:
 
 func _maybe_monster(x: float, y: float, width: float, density: float) -> void:
 	if x < TUNING.first_quiet_distance or platform_index < 1:
+		return
+	if width < 300.0:
 		return
 	var crowded: float = lerpf(TUNING.min_monster_gap_start, TUNING.min_monster_gap_end, clampf(density, 0.0, 1.0))
 	if x - last_monster_x < crowded:

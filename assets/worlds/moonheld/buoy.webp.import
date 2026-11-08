@@ -2,22 +2,22 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://818lap0fg8lk"
-path="res://.godot/imported/glassfall_bg.jpg-fc357ec3af968a5ac8c3b97a28bd9159.ctex"
+uid="uid://la37d5ut1au"
+path="res://.godot/imported/buoy.webp-26dc344025a3e1d44a4bcacf3abd688e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/glassfall_bg.jpg"
-dest_files=["res://.godot/imported/glassfall_bg.jpg-fc357ec3af968a5ac8c3b97a28bd9159.ctex"]
+source_file="res://assets/worlds/moonheld/buoy.webp"
+dest_files=["res://.godot/imported/buoy.webp-26dc344025a3e1d44a4bcacf3abd688e.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.84
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

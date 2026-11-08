@@ -60,7 +60,7 @@ Jump height is `jump_velocity² / (2 × gravity)`. Dash length is `dash_distance
 ## What is placeholder
 
 - The pirate is the single attack-pose cutout. At rest a mask recolors the coated arm to skin and hides the painted lightning. The black arm and red-black sparks come back only during the dash. A small patch of the original coating can remain where the sleeve meets the forearm. Bob and squash are code, not new frames.
-- Platforms and monsters are drawn shapes, not final illustrations. The background is `glassfall_bg.jpg` scrolled as parallax; it is one painting, so the loop is a soft crossfade, not a seamless tile.
+- Platforms are the Moonheld S3 pieces in `assets/worlds/moonheld/` (docks, coral ledges, stone slabs, buoys). Monsters are still drawn shapes. The backdrop is the Moonheld S3 sea plate, split into a sky layer and a ships layer. The world is still named Glassfall in code.
 - UI is type and flat panels. There is no music.
 
 Concept art stays out of this repo. The Glassfall look mock is a reference only and is not committed.
