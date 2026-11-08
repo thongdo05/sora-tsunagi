@@ -2,22 +2,22 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bcgkptevrusur"
-path="res://.godot/imported/bg_sea.webp-48b194cfe100f908b05897a3ac6b3fac.ctex"
+uid="uid://bcrfpeqi31xeb"
+path="res://.godot/imported/bg_far.webp-7bb0f2f5be302a9504be65b733bcba7f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/worlds/moonheld/bg_sea.webp"
-dest_files=["res://.godot/imported/bg_sea.webp-48b194cfe100f908b05897a3ac6b3fac.ctex"]
+source_file="res://assets/worlds/moonheld/bg_far.webp"
+dest_files=["res://.godot/imported/bg_far.webp-7bb0f2f5be302a9504be65b733bcba7f.ctex"]
 
 [params]
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.72
+compress/lossy_quality=0.744
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

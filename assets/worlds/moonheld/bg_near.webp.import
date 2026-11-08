@@ -2,22 +2,22 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2wnpt127088u"
-path="res://.godot/imported/bg_sky.webp-25bc4c84f1c43c06c9bdc7708b0d3aec.ctex"
+uid="uid://bk4q5w6mds32o"
+path="res://.godot/imported/bg_near.webp-f49bc3131a65beb071ef7ba53dd8aec2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/worlds/moonheld/bg_sky.webp"
-dest_files=["res://.godot/imported/bg_sky.webp-25bc4c84f1c43c06c9bdc7708b0d3aec.ctex"]
+source_file="res://assets/worlds/moonheld/bg_near.webp"
+dest_files=["res://.godot/imported/bg_near.webp-f49bc3131a65beb071ef7ba53dd8aec2.ctex"]
 
 [params]
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.72
+compress/lossy_quality=0.744
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

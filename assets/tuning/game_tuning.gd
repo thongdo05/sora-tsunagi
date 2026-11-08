@@ -16,6 +16,21 @@ extends Resource
 ## How fast horizontal speed eases back to the run after a dash. Not a snap.
 @export var dash_ease_out: float = 0.10
 
+@export_group("Backdrop")
+## Fraction of the run speed. Far is the moon and rift, mid is the ships, near is the water.
+@export var bg_far_scroll: float = 0.03
+@export var bg_mid_scroll: float = 0.08
+@export var bg_near_scroll: float = 0.18
+## Minimum width of one copy, in viewport widths. The loop is at least this wide.
+@export var bg_far_span: float = 2.4
+@export var bg_mid_span: float = 3.2
+@export var bg_near_span: float = 5.5
+## Screen-space drift of the cloud wisps, pixels per second. The moon plate itself stays on parallax.
+@export var bg_cloud_drift: float = 14.0
+@export var bg_sea_shimmer: float = 0.85
+## Slow vertical breath of the far sky, in pixels.
+@export var bg_sky_bob: float = 7.0
+
 @export_group("Pace")
 ## Seconds from the start of a run until speed and monster density reach the ramp end.
 @export var pace_ramp_seconds: float = 45.0
