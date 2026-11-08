@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1yyeicxse61w"
-path="res://.godot/imported/pirate_run_8f.png-260b20cc67c18d77b69d8dbc1ff77455.ctex"
+uid="uid://b685b8v7rm05c"
+path="res://.godot/imported/pirate_run_12f.png-4dcc9ee17c203360814505867f0ddca6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/sheets/pirate_run_8f.png"
-dest_files=["res://.godot/imported/pirate_run_8f.png-260b20cc67c18d77b69d8dbc1ff77455.ctex"]
+source_file="res://assets/sprites/sheets/pirate_run_12f.png"
+dest_files=["res://.godot/imported/pirate_run_12f.png-4dcc9ee17c203360814505867f0ddca6.ctex"]
 
 [params]
 

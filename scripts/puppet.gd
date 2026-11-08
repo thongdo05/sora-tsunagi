@@ -19,11 +19,12 @@ const BODY_PX := 360.0
 const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_6f.png")
 const DASH_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_7f.png")
 const ROLL_SHEET := preload("res://assets/sprites/sheets/pirate_roll_4f.png")
-const RUN_SHEET := preload("res://assets/sprites/sheets/pirate_run_8f.png")
-## One stride at the opening run speed. Faster running shortens the cycle.
-const RUN_CYCLE := 0.46
-## Head center of each painted frame. Pinning these stops the body popping sideways.
-const RUN_HEAD_X: Array[float] = [236.0, 268.0, 228.0, 274.0, 256.0, 234.0, 250.0, 251.0]
+const RUN_SHEET := preload("res://assets/sprites/sheets/pirate_run_12f.png")
+## Native stride: 12 frames in 0.417 s, about 28.8 fps. Scaled with run speed.
+const RUN_FRAMES := 12
+const RUN_NATIVE_SEC := 0.417
+const RUN_FPS_FLOOR := 20.0
+const RUN_FPS_CAP := 32.0
 
 var fist_anchor: Node2D
 var coat_material: ShaderMaterial
@@ -61,7 +62,7 @@ func set_phase(phase: float) -> void:
 
 
 func play_state(state: String, speed_ratio: float) -> void:
-	_speed_ratio = clampf(speed_ratio, 0.85, 2.1)
+	_speed_ratio = maxf(speed_ratio, 0.0)
 	if _state != state:
 		_state = state
 		_blend = 0.0
@@ -92,7 +93,7 @@ func fist_global() -> Vector2:
 
 func _process(delta: float) -> void:
 	if _state == "run":
-		_run_time += delta * _speed_ratio
+		_run_time += delta * _run_rate()
 	if _hip:
 		_hip.visible = false
 	if _blend < 1.0:
@@ -431,7 +432,7 @@ func _make_sheet_sprite(material: ShaderMaterial) -> Sprite2D:
 func _layout_sheet() -> void:
 	var squash := 0.0
 	if _state == "run":
-		var step := fmod(_run_time / RUN_CYCLE, 1.0) * TAU * 2.0
+		var step := _run_phase() * TAU * 2.0
 		squash = sin(step) * 0.028
 	elif _state == "takeoff":
 		squash = -0.07
@@ -444,9 +445,8 @@ func _layout_sheet() -> void:
 	for sprite in [_sheet, _sheet_prev]:
 		if sprite == null:
 			continue
-		var anchor_x := float(sprite.get_meta("anchor_x", FOOT.x))
 		sprite.scale = Vector2(sx, sy)
-		sprite.position = Vector2(-anchor_x * sx, -FOOT.y * sy)
+		sprite.position = Vector2(-FOOT.x * sx, -FOOT.y * sy)
 
 
 func _apply_sheet_frame() -> void:
@@ -468,7 +468,6 @@ func _apply_sheet_frame() -> void:
 			_blend = 0.0
 		_frame = frame
 	_set_cell(_sheet, texture, frame)
-	_sheet.set_meta("anchor_x", _anchor_x(_state, frame))
 	_sheet.visible = true
 	var shown := _blend if _sheet_prev.visible else 1.0
 	_sheet.modulate.a = shown
@@ -484,7 +483,6 @@ func _copy_sheet(src: Sprite2D, dst: Sprite2D) -> void:
 		return
 	dst.texture = src.texture
 	dst.region_rect = src.region_rect
-	dst.set_meta("anchor_x", src.get_meta("anchor_x", FOOT.x))
 	dst.visible = true
 
 
@@ -505,7 +503,7 @@ func _texture_for(state: String) -> Texture2D:
 
 func _frame_count(state: String) -> int:
 	if state == "run":
-		return 8
+		return RUN_FRAMES
 	if state == "dash":
 		return 7
 	if state == "roll":
@@ -513,19 +511,24 @@ func _frame_count(state: String) -> int:
 	return 6
 
 
-func _anchor_x(state: String, frame: int) -> float:
-	if state == "run":
-		return RUN_HEAD_X[clampi(frame, 0, RUN_HEAD_X.size() - 1)]
-	return FOOT.x
+## 1.0 plays the native 28.8 fps stride. Run speed scales it, held between 20 and 32 fps.
+func _run_rate() -> float:
+	var native := float(RUN_FRAMES) / RUN_NATIVE_SEC
+	var fps := clampf(native * _speed_ratio, RUN_FPS_FLOOR, RUN_FPS_CAP)
+	return fps / native
+
+
+func _run_phase() -> float:
+	var t := fmod(_run_time / RUN_NATIVE_SEC, 1.0)
+	if t < 0.0:
+		t += 1.0
+	return t
 
 
 func _frame_for(state: String, phase: float) -> int:
 	match state:
 		"run":
-			var t := fmod(_run_time / RUN_CYCLE, 1.0)
-			if t < 0.0:
-				t += 1.0
-			return int(t * 8.0) % 8
+			return int(_run_phase() * float(RUN_FRAMES)) % RUN_FRAMES
 		"takeoff":
 			return 0
 		"rise":
