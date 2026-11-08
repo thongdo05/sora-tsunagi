@@ -254,7 +254,8 @@ func _on_land(impact_speed: float) -> void:
 		_speed_scale = minf(_speed_scale, 1.0 - TUNING.hard_land_loss)
 	else:
 		_rolling = 0.0
-		_land_left = 0.16
+		# Visual only. Frames 6-8 of the jump sheet, then a crossfade into the run.
+		_land_left = 0.33
 
 
 func _start_dash() -> void:
@@ -301,6 +302,7 @@ func _drive_puppet() -> void:
 		phase = 1.0 - clampf(_dash_time / maxf(TUNING.dash_duration, 0.05), 0.0, 1.0)
 	elif _rolling > 0.0:
 		phase = 1.0 - clampf(_rolling / maxf(TUNING.roll_time, 0.05), 0.0, 1.0)
+	_puppet.set_vertical(velocity.y)
 	_puppet.set_phase(phase)
 	_puppet.play_state(state, ratio)
 	var coat := 0.0

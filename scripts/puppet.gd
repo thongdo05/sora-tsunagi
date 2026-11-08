@@ -16,7 +16,12 @@ const DASH_ANIM_LENGTH := 0.34
 const CELL := 512.0
 const FOOT := Vector2(256, 496)
 const BODY_PX := 360.0
-const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_6f.png")
+const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_8f.png")
+## Ground anticipation stays the short plant. This is only the push-off pose after the feet leave.
+const JUMP_TAKEOFF_AIR := 0.070
+## Landing art: fall contact 60ms, absorb 110ms, recover 160ms. Then the run crossfades back.
+const LAND_CONTACT := 0.060
+const LAND_ABSORB := 0.170
 const DASH_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_7f.png")
 const ROLL_SHEET := preload("res://assets/sprites/sheets/pirate_roll_4f.png")
 const RUN_SHEET := preload("res://assets/sprites/sheets/pirate_run_12f.png")
@@ -44,6 +49,9 @@ var _sheet_bolts: Bolts
 var _sheet_scale := 1.0
 var _speed_ratio := 1.0
 var _run_time := 0.0
+var _vy := 0.0
+var _air_time := 0.0
+var _land_time := 0.0
 
 
 func _ready() -> void:
@@ -59,6 +67,10 @@ func _ready() -> void:
 
 func set_phase(phase: float) -> void:
 	_phase = clampf(phase, 0.0, 1.0)
+
+
+func set_vertical(vy: float) -> void:
+	_vy = vy
 
 
 func play_state(state: String, speed_ratio: float) -> void:
@@ -94,6 +106,14 @@ func fist_global() -> Vector2:
 func _process(delta: float) -> void:
 	if _state == "run":
 		_run_time += delta * _run_rate()
+	if _jumping():
+		_air_time += delta
+	else:
+		_air_time = 0.0
+	if _state == "land":
+		_land_time += delta
+	else:
+		_land_time = 0.0
 	if _hip:
 		_hip.visible = false
 	if _blend < 1.0:
@@ -456,10 +476,11 @@ func _apply_sheet_frame() -> void:
 	var frame := _frame_for(_state, _phase)
 	var count := _frame_count(_state)
 	frame = clampi(frame, 0, count - 1)
-	var continuing_run := _state == "run" and _frame >= 0 and _sheet.texture == RUN_SHEET
+	var same_sheet := _frame >= 0 and _sheet.texture == texture
+	# Run and jump frames cut. Entering or leaving a sheet still crossfades.
+	var hard_cut := same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET)
 	if frame != _frame or _sheet.texture != texture:
-		if continuing_run:
-			# Hard cuts keep the painted frames crisp. A crossfade ghosts the stride.
+		if hard_cut:
 			_sheet_prev.visible = false
 			_blend = 1.0
 		else:
@@ -508,7 +529,7 @@ func _frame_count(state: String) -> int:
 		return 7
 	if state == "roll":
 		return 4
-	return 6
+	return 8
 
 
 ## 1.0 plays the native 28.8 fps stride. Run speed scales it, held between 20 and 32 fps.
@@ -529,24 +550,39 @@ func _frame_for(state: String, phase: float) -> int:
 	match state:
 		"run":
 			return int(_run_phase() * float(RUN_FRAMES)) % RUN_FRAMES
-		"takeoff":
-			return 0
-		"rise":
-			return 1
-		"apex":
-			return 2
-		"fall":
-			return 3
-		"land":
-			return 4
-		"double":
-			return 5
+		"takeoff", "rise", "apex", "fall", "land", "double":
+			return _jump_frame()
 		"dash":
 			return _marks(phase, [0.0, 0.12, 0.26, 0.42, 0.58, 0.74, 0.86, 1.01])
 		"roll":
 			return _marks(phase, [0.0, 0.16, 0.40, 0.66, 1.01])
 		_:
 			return 0
+
+
+func _jumping() -> bool:
+	return _state == "rise" or _state == "apex" or _state == "fall" or _state == "double"
+
+
+## Physics owns the height. Frames follow grounded state and vertical speed.
+## 0-1 ground anticipation and push-off, 2-4 rise / apex / fall, 5-7 landing.
+func _jump_frame() -> int:
+	if _state == "takeoff":
+		return 0
+	if _state == "land":
+		if _land_time < LAND_CONTACT:
+			return 5
+		if _land_time < LAND_ABSORB:
+			return 6
+		return 7
+	# A double jump is already in the air, so it skips the ground push-off pose.
+	if _state != "double" and _air_time < JUMP_TAKEOFF_AIR and _vy <= TUNING.apex_speed:
+		return 1
+	if _vy < -TUNING.apex_speed:
+		return 2
+	if _vy <= TUNING.apex_speed:
+		return 3
+	return 4
 
 
 func _marks(phase: float, edges: Array) -> int:
