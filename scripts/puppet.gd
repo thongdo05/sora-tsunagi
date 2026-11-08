@@ -13,14 +13,29 @@ const THIGH_TEX := preload("res://assets/sprites/parts/thigh.png")
 const SHIN_TEX := preload("res://assets/sprites/parts/shin.png")
 
 const DASH_ANIM_LENGTH := 0.34
+const CELL := 512.0
+const FOOT := Vector2(256, 496)
+const BODY_PX := 360.0
+const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_6f.png")
+const DASH_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_7f.png")
+const ROLL_SHEET := preload("res://assets/sprites/sheets/pirate_roll_4f.png")
 
 var fist_anchor: Node2D
 var coat_material: ShaderMaterial
 
 var _anim: AnimationPlayer
 var _punch_fore: Node2D
+var _hip: Node2D
 var _impact := 0.0
 var _state := ""
+var _phase := 0.0
+var _frame := -1
+var _blend := 1.0
+var _rig_mix := 1.0
+var _sheet: Sprite2D
+var _sheet_prev: Sprite2D
+var _sheet_bolts: Bolts
+var _sheet_scale := 1.0
 
 
 func _ready() -> void:
@@ -28,25 +43,32 @@ func _ready() -> void:
 	scale = Vector2(0.312, 0.312) * figure
 	_build()
 	_build_anims()
+	_build_sheet()
 	play_state("run", 1.0)
 
 
+func set_phase(phase: float) -> void:
+	_phase = clampf(phase, 0.0, 1.0)
+
+
 func play_state(state: String, speed_ratio: float) -> void:
-	if state == _state and state != "dash":
-		if state == "run":
-			_anim.speed_scale = clampf(speed_ratio, 0.85, 2.1)
-		return
-	_state = state
-	if not _anim.has_animation(state):
-		state = "run"
-	var blend := 0.08 if state == "run" else 0.04
-	_anim.play(state, blend)
+	var sheeted := state != "run"
 	if state == "run":
+		if _state != "run":
+			_state = "run"
+			_frame = -1
+			if _anim.has_animation("run"):
+				_anim.play("run", 0.08)
 		_anim.speed_scale = clampf(speed_ratio, 0.85, 2.1)
-	elif state == "dash":
-		_anim.speed_scale = DASH_ANIM_LENGTH / maxf(TUNING.dash_duration, 0.05)
-	else:
-		_anim.speed_scale = 1.0
+		_apply_sheet_frame()
+		return
+	if _state != state:
+		_state = state
+		_frame = -1
+		_blend = 0.0
+	if sheeted:
+		_anim.pause()
+	_apply_sheet_frame()
 
 
 func set_coat(amount: float) -> void:
@@ -68,6 +90,14 @@ func fist_global() -> Vector2:
 
 
 func _process(delta: float) -> void:
+	var rig_target := 1.0 if _state == "run" else 0.0
+	_rig_mix = move_toward(_rig_mix, rig_target, delta / 0.08)
+	if _hip:
+		_hip.modulate.a = _rig_mix
+	if _blend < 1.0:
+		_blend = minf(1.0, _blend + delta / 0.08)
+	_apply_sheet_frame()
+	_layout_sheet()
 	if _impact > 0.0:
 		_impact = maxf(0.0, _impact - delta * 8.0)
 		_punch_fore.modulate = Color(1.0, 0.82, 0.75).lerp(Color.WHITE, 1.0 - _impact)
@@ -85,6 +115,7 @@ func _build() -> void:
 	hip.name = "hip"
 	hip.position = hip_at - feet
 	add_child(hip)
+	_hip = hip
 
 	var back_thigh := _leg("back_thigh", THIGH_TEX, Vector2(-70, 18))
 	var back_shin := _leg("back_shin", SHIN_TEX, Vector2(6, 70))
@@ -361,14 +392,151 @@ func _dash_anim() -> Animation:
 	return anim
 
 
+func _build_sheet() -> void:
+	var world_scale := (TUNING.player_height * 0.86) / BODY_PX
+	_sheet_scale = world_scale / maxf(scale.x, 0.001)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/shirt_match.gdshader")
+	_sheet = _make_sheet_sprite(material)
+	_sheet_prev = _make_sheet_sprite(material)
+	_sheet_prev.z_index = 1
+	_sheet.z_index = 2
+	_sheet_bolts = Bolts.new()
+	_sheet_bolts.puppet = self
+	_sheet_bolts.follow_coat = false
+	_sheet_bolts.position = Vector2(430, 300)
+	_sheet_bolts.z_index = 3
+	_sheet.add_child(_sheet_bolts)
+	_layout_sheet()
+
+
+func _make_sheet_sprite(material: ShaderMaterial) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.region_enabled = true
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sprite.material = material
+	sprite.visible = false
+	add_child(sprite)
+	return sprite
+
+
+func _layout_sheet() -> void:
+	var squash := 0.0
+	if _state == "takeoff":
+		squash = -0.07
+	elif _state == "land":
+		squash = 0.09
+	elif _state == "roll":
+		squash = 0.05
+	var sx := _sheet_scale * (1.0 + squash)
+	var sy := _sheet_scale * (1.0 - squash)
+	for sprite in [_sheet, _sheet_prev]:
+		if sprite == null:
+			continue
+		sprite.scale = Vector2(sx, sy)
+		sprite.position = Vector2(-FOOT.x * sx, -FOOT.y * sy)
+
+
+func _apply_sheet_frame() -> void:
+	if _sheet == null:
+		return
+	var sheeted := _state != "run"
+	if not sheeted:
+		_sheet.visible = false
+		_sheet_prev.visible = false
+		if _sheet_bolts:
+			_sheet_bolts.visible = false
+		return
+	var texture := _texture_for(_state)
+	var frame := _frame_for(_state, _phase)
+	var count := _frame_count(_state)
+	frame = clampi(frame, 0, count - 1)
+	if frame != _frame:
+		_copy_sheet(_sheet, _sheet_prev)
+		_sheet_prev.visible = _frame >= 0
+		_frame = frame
+		_blend = 0.0 if _frame >= 0 else 1.0
+	_set_cell(_sheet, texture, frame)
+	_sheet.visible = true
+	var shown := _blend if _sheet_prev.visible else 1.0
+	_sheet.modulate.a = shown
+	_sheet_prev.modulate.a = 1.0 - shown
+	var punch := _state == "dash" and frame >= 2 and frame <= 5
+	if _sheet_bolts:
+		_sheet_bolts.visible = punch
+
+
+func _copy_sheet(src: Sprite2D, dst: Sprite2D) -> void:
+	if src.texture == null:
+		dst.visible = false
+		return
+	dst.texture = src.texture
+	dst.region_rect = src.region_rect
+	dst.visible = true
+
+
+func _set_cell(sprite: Sprite2D, texture: Texture2D, frame: int) -> void:
+	sprite.texture = texture
+	sprite.region_rect = Rect2(float(frame) * CELL, 0, CELL, CELL)
+
+
+func _texture_for(state: String) -> Texture2D:
+	if state == "dash":
+		return DASH_SHEET
+	if state == "roll":
+		return ROLL_SHEET
+	return JUMP_SHEET
+
+
+func _frame_count(state: String) -> int:
+	if state == "dash":
+		return 7
+	if state == "roll":
+		return 4
+	return 6
+
+
+func _frame_for(state: String, phase: float) -> int:
+	match state:
+		"takeoff":
+			return 0
+		"rise":
+			return 1
+		"apex":
+			return 2
+		"fall":
+			return 3
+		"land":
+			return 4
+		"double":
+			return 5
+		"dash":
+			return _marks(phase, [0.0, 0.12, 0.26, 0.42, 0.58, 0.74, 0.86, 1.01])
+		"roll":
+			return _marks(phase, [0.0, 0.16, 0.40, 0.66, 1.01])
+		_:
+			return 0
+
+
+func _marks(phase: float, edges: Array) -> int:
+	var t := clampf(phase, 0.0, 0.999)
+	for i in edges.size() - 1:
+		if t < float(edges[i + 1]):
+			return i
+	return edges.size() - 2
+
+
 class Bolts extends Node2D:
 	var puppet
+	var follow_coat := true
 
 	func _process(_delta: float) -> void:
-		var coat := 0.0
-		if puppet and puppet.coat_material:
-			coat = float(puppet.coat_material.get_shader_parameter("coat"))
-		visible = coat > 0.35
+		if follow_coat:
+			var coat := 0.0
+			if puppet and puppet.coat_material:
+				coat = float(puppet.coat_material.get_shader_parameter("coat"))
+			visible = coat > 0.35
 		queue_redraw()
 
 	func _draw() -> void:

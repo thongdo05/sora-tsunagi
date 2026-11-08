@@ -1,10 +1,26 @@
-[gd_resource type="Resource" script_class="WorldBackdrop" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="WorldBackdrop" load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/world_backdrop.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p01_sky.webp" id="s1"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p02_sky.webp" id="s2"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p03_sky.webp" id="s3"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p04_sky.webp" id="s4"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p05_sky.webp" id="s5"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p06_sky.webp" id="s6"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p01_mid.webp" id="m1"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p02_mid.webp" id="m2"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p03_mid.webp" id="m3"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p04_mid.webp" id="m4"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p05_mid.webp" id="m5"]
+[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/chain/p06_mid.webp" id="m6"]
 
 [resource]
 script = ExtResource("1_script")
 world_id = "moonheld"
-sky_color = Color(0.04, 0.1, 0.24, 1)
-art_note = "No panels yet. After Glassfall's chain, the run crossfades here. Add far_panels, mid_panels, and near_panels in order."
+sky_color = Color(0.035, 0.09, 0.22, 1)
+art_note = "Six-panel Moonheld chain, manifest run2_fix_v1. Sky plates are the far layer (panel 1 lighting matched to 2-6, rift interior purple, wisps and misted waterfalls in the sky). The alpha sea/wreck plates are the mid layer, with the painted deck feathered out from row 1104 to 1132 so it is not a floor. Stride 2304, overlap 512, full panel 2816. Near layer left empty so it does not stack a second sea on the chain."
+far_panels = Array[Texture2D]([ExtResource("s1"), ExtResource("s2"), ExtResource("s3"), ExtResource("s4"), ExtResource("s5"), ExtResource("s6")])
+mid_panels = Array[Texture2D]([ExtResource("m1"), ExtResource("m2"), ExtResource("m3"), ExtResource("m4"), ExtResource("m5"), ExtResource("m6")])
 reuse_until = 4
+chain_stride_px = 2304
+chain_full_px = 2816

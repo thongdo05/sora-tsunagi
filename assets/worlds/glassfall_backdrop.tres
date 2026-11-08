@@ -1,16 +1,10 @@
-[gd_resource type="Resource" script_class="WorldBackdrop" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="WorldBackdrop" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/world_backdrop.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/bg_far.webp" id="2_far"]
-[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/bg_mid.webp" id="3_mid"]
-[ext_resource type="Texture2D" path="res://assets/worlds/moonheld/bg_near.webp" id="4_near"]
 
 [resource]
 script = ExtResource("1_script")
 world_id = "glassfall"
-sky_color = Color(0.035, 0.09, 0.22, 1)
-art_note = "First playable world. The only panel so far is the Moonheld S3 plate (the_moonheld_sea_v7_blue_S3), used here while the code name stays Glassfall. Append far, mid, and near textures in the same order. At 4 panels the chain plays through and crossfades into Moonheld."
-far_panels = Array[Texture2D]([ExtResource("2_far")])
-mid_panels = Array[Texture2D]([ExtResource("3_mid")])
-near_panels = Array[Texture2D]([ExtResource("4_near")])
+sky_color = Color(0.1, 0.07, 0.14, 1)
+art_note = "No Glassfall plates yet. The run skips an empty world, so playback opens on Moonheld. Add far_panels, mid_panels, and near_panels in the same order when the art arrives."
 reuse_until = 4

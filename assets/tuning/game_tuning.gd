@@ -18,9 +18,9 @@ extends Resource
 
 @export_group("Backdrop")
 ## Fraction of the run speed. Far is the moon and rift, mid is the ships, near is the water.
-@export var bg_far_scroll: float = 0.03
-@export var bg_mid_scroll: float = 0.08
-@export var bg_near_scroll: float = 0.18
+@export var bg_far_scroll: float = 0.05
+@export var bg_mid_scroll: float = 0.12
+@export var bg_near_scroll: float = 0.22
 ## Minimum width of one copy, in viewport widths. The loop is at least this wide.
 @export var bg_far_span: float = 2.4
 @export var bg_mid_span: float = 3.2
@@ -63,6 +63,8 @@ extends Resource
 ## Fraction of run speed removed on a hard landing. Eases back, never stops the run.
 @export var hard_land_loss: float = 0.10
 @export var hard_land_recover: float = 0.40
+## How long the hard-landing roll plays. The four keys are blended across this.
+@export var roll_time: float = 0.52
 
 @export_group("Dash")
 @export var dash_distance: float = 360.0

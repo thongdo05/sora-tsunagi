@@ -200,16 +200,22 @@ func _check_backdrop(run: RunRoot) -> void:
 	if ids != ["glassfall", "moonheld", "lanternfall"]:
 		_fail("world loop order %s" % str(ids))
 	var glass := loop.worlds[0]
-	if glass.far_panels.size() != 1 or not glass.reuses("far"):
-		_fail("glassfall should still be the single Moonheld plate in reuse")
-	var first: Dictionary = loop.resolve("far", 0)
-	var second: Dictionary = loop.resolve("far", 1)
-	if first.get("texture") == null or first.get("texture") != second.get("texture"):
-		_fail("reuse should repeat the one far panel")
-	elif bool(first.get("flip")) or not bool(second.get("flip")):
-		_fail("reuse should mirror every other copy")
-	elif str(first.get("world").world_id) != "glassfall":
-		_fail("reuse stayed on %s" % first.get("world").world_id)
+	if not glass.far_panels.is_empty():
+		_fail("glassfall has no plates yet, found %s" % glass.far_panels.size())
+	var moon := loop.worlds[1]
+	if moon.far_panels.size() != 6 or moon.mid_panels.size() != 6 or moon.reuses("far"):
+		_fail("moonheld should be a 6-panel chain")
+	var first: Dictionary = loop.layout("far", 0)
+	var second: Dictionary = loop.layout("far", 1)
+	var last: Dictionary = loop.layout("far", 5)
+	if first.get("texture") == null or first.get("world").world_id != "moonheld":
+		_fail("the run should open on the moonheld chain")
+	elif bool(first.get("flip")) or bool(second.get("flip")):
+		_fail("unique panels should not mirror")
+	elif int(second.get("art_x")) != 2304 or int(last.get("art_x")) != 11520:
+		_fail("stride art_x %s %s" % [second.get("art_x"), last.get("art_x")])
+	elif int(second.get("src_w")) != 2304 or int(last.get("src_w")) != 2816:
+		_fail("panel crop %s %s" % [second.get("src_w"), last.get("src_w")])
 	var tex: Texture2D = first.get("texture")
 	var long := WorldBackdrop.new()
 	long.world_id = "glassfall-long"

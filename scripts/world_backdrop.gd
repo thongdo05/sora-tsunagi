@@ -19,6 +19,10 @@ extends Resource
 @export var near_panels: Array[Texture2D] = []
 ## Unique panels required before this world plays through and hands off.
 @export var reuse_until: int = 4
+## Authored chain. 0 means each texture is its own full width.
+## Moonheld panels are 2816 wide with a 2304 stride (512px hand-off already in the art).
+@export var chain_stride_px: int = 0
+@export var chain_full_px: int = 0
 
 
 func panels_for(layer: String) -> Array[Texture2D]:

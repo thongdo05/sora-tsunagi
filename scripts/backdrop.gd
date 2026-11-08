@@ -24,9 +24,11 @@ func _ready() -> void:
 	_sky.size = Vector2(32000, 8000)
 	_sky.z_index = -5
 	add_child(_sky)
-	far_track = _layer("far", -4, TUNING.bg_far_scroll, TUNING.bg_far_span, 1.02, -0.02, 0.22, 0.0, 0.3, 0.0)
-	mid_track = _layer("mid", -3, TUNING.bg_mid_scroll, TUNING.bg_mid_span, 0.38, 0.46, 0.16, 0.45, 0.35, 0.0)
-	near_track = _layer("near", -2, TUNING.bg_near_scroll, TUNING.bg_near_span, 0.18, 0.84, 0.2, 0.72, 0.0, TUNING.bg_sea_shimmer)
+	# Sky and the ship layer share one vertical frame so the horizon stays put.
+	# Only the horizontal parallax differs. The near water sits under the platforms.
+	far_track = _layer("far", -4, TUNING.bg_far_scroll, TUNING.bg_far_span, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+	mid_track = _layer("mid", -3, TUNING.bg_mid_scroll, TUNING.bg_mid_span, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+	near_track = _layer("near", -2, TUNING.bg_near_scroll, TUNING.bg_near_span, 0.2, 0.82, 0.0, 0.55, 0.0, TUNING.bg_sea_shimmer)
 	_motes = Motes.new()
 	_motes.z_index = 3
 	add_child(_motes)

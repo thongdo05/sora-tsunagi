@@ -247,7 +247,7 @@ func _on_land(impact_speed: float) -> void:
 	_doubling = 0.0
 	_puff()
 	if impact_speed >= TUNING.hard_land_speed:
-		_rolling = 0.36
+		_rolling = TUNING.roll_time
 		_land_left = 0.0
 		_speed_scale = minf(_speed_scale, 1.0 - TUNING.hard_land_loss)
 	else:
@@ -294,6 +294,12 @@ func _drive_puppet() -> void:
 			state = "apex"
 		else:
 			state = "fall"
+	var phase := 0.0
+	if _dashing:
+		phase = 1.0 - clampf(_dash_time / maxf(TUNING.dash_duration, 0.05), 0.0, 1.0)
+	elif _rolling > 0.0:
+		phase = 1.0 - clampf(_rolling / maxf(TUNING.roll_time, 0.05), 0.0, 1.0)
+	_puppet.set_phase(phase)
 	_puppet.play_state(state, ratio)
 	var coat := 0.0
 	if _dashing:
