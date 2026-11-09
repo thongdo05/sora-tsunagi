@@ -17,6 +17,16 @@ const CELL := 512.0
 const FOOT := Vector2(256, 496)
 const BODY_PX := 360.0
 const JUMP_SHEET := preload("res://assets/sprites/sheets/pirate_jump_8f.png")
+const FLIP_SHEET := preload("res://assets/sprites/sheets/pirate_flip_8f.png")
+## Front flip for the air jump only. Holds match the sheet: 70, 50, 50, 50, 50, 60, 70, 100 ms.
+const FLIP_MS: Array[int] = [70, 50, 50, 50, 50, 60, 70, 100]
+## Silhouette center of each flip cell. The lock keeps that center still; physics owns the arc.
+const FLIP_CENTER_Y: Array[float] = [362.2, 332.7, 347.4, 362.8, 336.3, 317.9, 268.8, 200.3]
+const FLIP_LOCK_Y := 316.05
+const OD_ENTRY_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_entry_2f.png")
+const OD_LOOP_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_loop_8f.png")
+const OD_ENTRY_MS: Array[int] = [60, 50]
+const OD_LOOP_MS := 55
 ## Ground anticipation stays the short plant. This is only the push-off pose after the feet leave.
 const JUMP_TAKEOFF_AIR := 0.070
 ## Landing art: fall contact 60ms, absorb 110ms, recover 160ms. Then the run crossfades back.
@@ -41,6 +51,8 @@ var _impact := 0.0
 var _state := ""
 var _phase := 0.0
 var _overdrive_time := 0.0
+var _flip_active := false
+var _flip_time := 0.0
 var _frame := -1
 var _blend := 1.0
 var _rig_mix := 1.0
@@ -79,6 +91,11 @@ func play_state(state: String, speed_ratio: float) -> void:
 	if _state != state:
 		if state == "overdrive":
 			_overdrive_time = 0.0
+		if state == "double":
+			_flip_active = true
+			_flip_time = 0.0
+		if state == "land" or state == "roll" or state == "run" or state == "dash" or state == "overdrive" or state == "takeoff":
+			_flip_active = false
 		_state = state
 		_blend = 0.0
 	if _hip:
@@ -111,6 +128,8 @@ func _process(delta: float) -> void:
 		_run_time += delta * _run_rate()
 	if _state == "overdrive":
 		_overdrive_time += delta
+	if _flip_active and (_state == "double" or _state == "rise" or _state == "apex" or _state == "fall"):
+		_flip_time += delta
 	if _jumping():
 		_air_time += delta
 	else:
@@ -467,11 +486,16 @@ func _layout_sheet() -> void:
 		squash = 0.05
 	var sx := _sheet_scale * (1.0 + squash)
 	var sy := _sheet_scale * (1.0 - squash)
+	var anchor_y := FOOT.y
+	if _sheet != null and _sheet.texture == FLIP_SHEET:
+		var idx := clampi(_frame, 0, FLIP_CENTER_Y.size() - 1)
+		# Shift the cell so the body center stays put. Do not add the authored jump height.
+		anchor_y = FLIP_CENTER_Y[idx] - FLIP_LOCK_Y + FOOT.y
 	for sprite in [_sheet, _sheet_prev]:
 		if sprite == null:
 			continue
 		sprite.scale = Vector2(sx, sy)
-		sprite.position = Vector2(-FOOT.x * sx, -FOOT.y * sy)
+		sprite.position = Vector2(-FOOT.x * sx, -anchor_y * sy)
 
 
 func _apply_sheet_frame() -> void:
@@ -482,8 +506,11 @@ func _apply_sheet_frame() -> void:
 	var count := _frame_count(_state)
 	frame = clampi(frame, 0, count - 1)
 	var same_sheet := _frame >= 0 and _sheet.texture == texture
-	# Run and jump frames cut. Entering or leaving a sheet still crossfades.
-	var hard_cut := same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET or _state == "overdrive")
+	var from_flip := _sheet.texture == FLIP_SHEET
+	var overdrive_sheet := texture == OD_ENTRY_SHEET or texture == OD_LOOP_SHEET
+	# Run, jump, and flip frames cut. Overdrive cuts between its own sheets.
+	# Leaving Overdrive for the run still crossfades.
+	var hard_cut := from_flip or overdrive_sheet or (same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET or texture == FLIP_SHEET))
 	if frame != _frame or _sheet.texture != texture:
 		if hard_cut:
 			_sheet_prev.visible = false
@@ -518,20 +545,32 @@ func _set_cell(sprite: Sprite2D, texture: Texture2D, frame: int) -> void:
 
 
 func _texture_for(state: String) -> Texture2D:
+	if _flip_on_sheet():
+		return FLIP_SHEET
 	if state == "run":
 		return RUN_SHEET
-	if state == "dash" or state == "overdrive":
+	if state == "dash":
 		return DASH_SHEET
+	if state == "overdrive":
+		if _overdrive_ms() < _ms_sum(OD_ENTRY_MS):
+			return OD_ENTRY_SHEET
+		return OD_LOOP_SHEET
 	if state == "roll":
 		return ROLL_SHEET
 	return JUMP_SHEET
 
 
 func _frame_count(state: String) -> int:
+	if _flip_on_sheet():
+		return 8
 	if state == "run":
 		return RUN_FRAMES
-	if state == "dash" or state == "overdrive":
+	if state == "dash":
 		return 7
+	if state == "overdrive":
+		if _overdrive_ms() < _ms_sum(OD_ENTRY_MS):
+			return 2
+		return 8
 	if state == "roll":
 		return 4
 	return 8
@@ -552,6 +591,8 @@ func _run_phase() -> float:
 
 
 func _frame_for(state: String, phase: float) -> int:
+	if _flip_visual():
+		return _flip_frame()
 	match state:
 		"run":
 			return int(_run_phase() * float(RUN_FRAMES)) % RUN_FRAMES
@@ -560,12 +601,58 @@ func _frame_for(state: String, phase: float) -> int:
 		"dash":
 			return _marks(phase, [0.0, 0.12, 0.26, 0.42, 0.58, 0.74, 0.86, 1.01])
 		"overdrive":
-			# Loop the dash-punch lunge. Final art comes later; this is the existing 7-frame sheet.
-			return int(_overdrive_time * 8.0) % 7
+			return _overdrive_frame()
 		"roll":
 			return _marks(phase, [0.0, 0.16, 0.40, 0.66, 1.01])
 		_:
 			return 0
+
+
+func _flip_visual() -> bool:
+	return _flip_active and (_state == "double" or _state == "rise" or _state == "apex" or _state == "fall")
+
+
+func _flip_on_sheet() -> bool:
+	return _flip_visual() and _flip_time * 1000.0 < float(_ms_sum(FLIP_MS))
+
+
+func _flip_frame() -> int:
+	var total := float(_ms_sum(FLIP_MS))
+	var ms := _flip_time * 1000.0
+	if ms < total:
+		return _step_index(ms, FLIP_MS)
+	# After the flip, fall cells 6 then 7 of jump_8f (0-based 5, then 6). Landing is separate.
+	if ms < total + 60.0:
+		return 5
+	return 6
+
+
+func _overdrive_frame() -> int:
+	var entry := _ms_sum(OD_ENTRY_MS)
+	var ms := _overdrive_ms()
+	if ms < entry:
+		return _step_index(ms, OD_ENTRY_MS)
+	return int((ms - entry) / float(OD_LOOP_MS)) % 8
+
+
+func _overdrive_ms() -> float:
+	return _overdrive_time * 1000.0
+
+
+func _ms_sum(durations: Array[int]) -> int:
+	var total := 0
+	for duration in durations:
+		total += duration
+	return total
+
+
+func _step_index(ms: float, durations: Array[int]) -> int:
+	var acc := 0.0
+	for i in durations.size():
+		acc += float(durations[i])
+		if ms < acc:
+			return i
+	return durations.size() - 1
 
 
 func _jumping() -> bool:
