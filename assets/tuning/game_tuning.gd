@@ -161,6 +161,25 @@ extends Resource
 ## Seconds of quiet before a collect streak's pitch resets.
 @export var sliver_streak_gap: float = 0.55
 @export var sliver_bob: float = 7.0
+## Pixels of track between shard clusters. Clusters are occasional, not a trail.
+@export var shard_cluster_gap: float = 1500.0
+@export var shard_cluster_min: int = 3
+@export var shard_cluster_max: int = 6
+## Even spacing of a straight row, and how far above the deck it sits.
+@export var shard_row_gap: float = 76.0
+@export var shard_row_lift: float = 96.0
+## Consecutive shards to reach x2, x3, x4, and x5. x1 is the start. Cap is x5.
+@export var streak_x2: int = 5
+@export var streak_x3: int = 12
+@export var streak_x4: int = 20
+@export var streak_x5: int = 30
+## Shards collected to fill the dash meter.
+@export var dash_meter_shards: int = 15
+@export var overdrive_speed: float = 1.8
+@export var overdrive_duration: float = 2.0
+## Second tap inside this window upgrades a dash that already started. It does not delay the first tap.
+@export var overdrive_tap_window: float = 0.25
+@export var overdrive_smash_reach: float = 150.0
 
 
 ## 0 at the start of a run, 1 once pace_ramp_seconds has elapsed. Shared by speed and density.

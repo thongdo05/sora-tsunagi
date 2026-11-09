@@ -5,6 +5,8 @@ const TUNING := preload("res://assets/tuning/game_tuning.tres")
 var score_text: String = "0"
 var score_plate: Control
 var sliver_plate: Control
+var streak_label: Label
+var meter_bar: Control
 var combo_label: Label
 var lives_plate: Control
 var start_panel: PanelContainer
@@ -15,6 +17,7 @@ var _world_label: Label
 var _guardian_label: Label
 var _over_world: Label
 var _sliver_pop: float = 0.0
+var _streak_pop: float = 0.0
 var paused_label: Label
 var rotate_panel: Control
 var _root: Control
@@ -52,8 +55,23 @@ func _ready() -> void:
 	sliver_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(sliver_plate as SliverPlate).font = _font
 	(sliver_plate as SliverPlate).caption_font = _font_small
-	(sliver_plate as SliverPlate).icon = preload("res://assets/sprites/slivers/sliver_02.webp")
+	(sliver_plate as SliverPlate).icon = preload("res://assets/sprites/slivers/sliver_01.webp")
 	_root.add_child(sliver_plate)
+
+	streak_label = _label("x1", 28, Color("e7c99a"))
+	streak_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	streak_label.add_theme_font_override("font", _font)
+	streak_label.add_theme_constant_override("outline_size", 6)
+	streak_label.custom_minimum_size = Vector2(84, 40)
+	streak_label.size = Vector2(84, 40)
+	streak_label.pivot_offset = Vector2(18, 22)
+	_root.add_child(streak_label)
+
+	meter_bar = MeterBar.new()
+	meter_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meter_bar.custom_minimum_size = Vector2(280, 28)
+	meter_bar.size = Vector2(280, 28)
+	_root.add_child(meter_bar)
 
 	combo_label = Label.new()
 	combo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,6 +179,11 @@ func _process(delta: float) -> void:
 	if sliver_plate:
 		var sliver_scale := 1.0 + _sliver_pop * _sliver_pop * 0.16
 		sliver_plate.scale = Vector2.ONE * sliver_scale
+	if _streak_pop > 0.0:
+		_streak_pop = maxf(0.0, _streak_pop - delta * 3.0)
+	if streak_label:
+		var streak_scale := 1.0 + _streak_pop * _streak_pop * 0.18
+		streak_label.scale = Vector2.ONE * streak_scale
 	if _break > 0.0:
 		_break = maxf(0.0, _break - delta)
 		combo_label.modulate = Color(1, 0.42, 0.38)
@@ -244,6 +267,20 @@ func world_title() -> String:
 	return _world_label.text if _world_label else ""
 
 
+func set_streak(mult: int, pop: bool) -> void:
+	if streak_label == null:
+		return
+	streak_label.text = "x%d" % clampi(mult, 1, 5)
+	if pop:
+		_streak_pop = 1.0
+
+
+func set_meter(ratio: float) -> void:
+	if meter_bar is MeterBar:
+		(meter_bar as MeterBar).fill = clampf(ratio, 0.0, 1.0)
+		meter_bar.queue_redraw()
+
+
 func set_slivers(count: int, punch: bool) -> void:
 	if sliver_plate is SliverPlate:
 		(sliver_plate as SliverPlate).count = count
@@ -281,6 +318,13 @@ func _layout(inset: Vector4) -> void:
 	if sliver_plate:
 		sliver_plate.position = Vector2(inset.x, inset.y + score_plate.size.y + 10.0)
 		sliver_plate.pivot_offset = Vector2(28, 36)
+	if streak_label:
+		streak_label.position = sliver_plate.position + Vector2(sliver_plate.size.x + 12.0, 22.0)
+	if meter_bar:
+		var bar_left := view.x * 0.5 + 48.0
+		var bar_right := view.x - inset.z - 28.0
+		meter_bar.position = Vector2(bar_left, view.y - inset.w - 36.0)
+		meter_bar.size = Vector2(maxf(180.0, bar_right - bar_left), 28.0)
 	if lives_plate:
 		lives_plate.position = Vector2(view.x - inset.z - lives_plate.size.x, inset.y)
 	if combo_label:
@@ -442,6 +486,32 @@ class SliverPlate extends Control:
 			draw_string(caption, Vector2(60, 24), "SLIVERS", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("e7c99a"))
 		if face:
 			draw_string(face, Vector2(58, 56), str(count), HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color("fff6e8"))
+
+
+class MeterBar extends Control:
+	var fill: float = 0.0
+	var _pulse: float = 0.0
+
+	func _process(delta: float) -> void:
+		if fill >= 0.999:
+			_pulse += delta
+			queue_redraw()
+		elif _pulse != 0.0:
+			_pulse = 0.0
+			queue_redraw()
+
+	func _draw() -> void:
+		var full := fill >= 0.999
+		var glow := 0.35 + 0.25 * sin(_pulse * 4.0) if full else 0.0
+		var bar := Rect2(0, 10, size.x, 8)
+		if full:
+			draw_rect(bar.grow(6.0), Color(1.0, 0.45, 0.22, 0.10 + glow * 0.18))
+			draw_rect(bar.grow(3.0), Color(1.0, 0.62, 0.28, 0.16 + glow * 0.22))
+		draw_rect(bar, Color(0.04, 0.02, 0.08, 0.72))
+		var inner := Rect2(bar.position.x + 1.0, bar.position.y + 1.0, maxf(0.0, (bar.size.x - 2.0) * fill), bar.size.y - 2.0)
+		var color := Color(1.0, 0.72, 0.38, 0.95) if not full else Color(1.0, 0.86, 0.62, 0.95)
+		draw_rect(inner, color)
+		draw_rect(Rect2(bar.position.x, bar.position.y, bar.size.x, 1.0), Color(1, 1, 1, 0.28 + glow))
 
 
 class LivesPlate extends Control:

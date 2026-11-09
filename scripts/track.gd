@@ -23,7 +23,9 @@ var last_y: float = 820.0
 var last_monster_x: float = -10000.0
 var platform_index: int = 0
 var _rng := RandomNumberGenerator.new()
-var _sliver_shape: int = 0
+var _next_cluster_x: float = 0.0
+var _cluster_on_arc: bool = true
+var _missed_slivers: int = 0
 
 
 func _ready() -> void:
@@ -137,7 +139,7 @@ func _add_platform(x: float, y: float, width: float) -> void:
 	if platforms.size() == 1:
 		_seed_opening(platform)
 	elif platforms.size() >= 2:
-		_spawn_arc(platforms[platforms.size() - 2], platform)
+		_maybe_cluster(platforms[platforms.size() - 2], platform)
 
 
 func _maybe_monster(x: float, y: float, width: float, density: float) -> void:
@@ -196,49 +198,68 @@ func collect_along(body_center: Vector2) -> Array[Vector2]:
 	return got
 
 
+func take_misses() -> int:
+	var count := _missed_slivers
+	_missed_slivers = 0
+	return count
+
+
 func _seed_opening(platform: GlassPlatform) -> void:
-	# A low teaching arc over the first deck. Clear of the stone, still an easy hop.
-	var left := platform.position.x + 520.0
-	var right := platform.position.x + platform.width - 280.0
-	for i in 3:
-		var u := float(i) / 2.0
-		var x := lerpf(left, right, u)
-		var y := platform.position.y - lerpf(150.0, 200.0, sin(u * PI))
-		_place_sliver(x, y)
+	# One short row on the first deck, at chest height, so the line is obvious.
+	_row_cluster(platform, 4, 0.34)
+	_next_cluster_x = platform.position.x + platform.width + TUNING.shard_cluster_gap * 0.55
+	_cluster_on_arc = true
 
 
-func _spawn_arc(prev: GlassPlatform, platform: GlassPlatform) -> void:
-	var x0 := prev.position.x + prev.width - 24.0
-	var x1 := platform.position.x + minf(70.0, platform.width * 0.22)
+func _maybe_cluster(prev: GlassPlatform, platform: GlassPlatform) -> void:
+	if platform.position.x < _next_cluster_x:
+		return
+	var count := _rng.randi_range(TUNING.shard_cluster_min, TUNING.shard_cluster_max)
+	var gap := platform.position.x - (prev.position.x + prev.width)
+	if _cluster_on_arc and gap >= 140.0:
+		_arc_cluster(prev, platform, count)
+	else:
+		_row_cluster(platform, count, 0.18)
+	_cluster_on_arc = not _cluster_on_arc
+	_next_cluster_x = platform.position.x + TUNING.shard_cluster_gap
+
+
+func _row_cluster(platform: GlassPlatform, count: int, along: float) -> void:
+	var n := maxi(count, 1)
+	var step := TUNING.shard_row_gap
+	var span := step * float(n - 1)
+	var left := platform.position.x + platform.width * along
+	var right_limit := platform.position.x + platform.width - 48.0
+	if left + span > right_limit:
+		left = right_limit - span
+	left = maxf(left, platform.position.x + 48.0)
+	var y := platform.position.y - TUNING.shard_row_lift
+	for i in n:
+		_place_sliver(left + step * float(i), y)
+
+
+func _arc_cluster(prev: GlassPlatform, platform: GlassPlatform, count: int) -> void:
+	var x0 := prev.position.x + prev.width - 8.0
+	var x1 := platform.position.x + minf(64.0, platform.width * 0.18)
 	if x1 - x0 < 90.0:
+		_row_cluster(platform, count, 0.16)
 		return
 	var y0 := prev.position.y
 	var y1 := platform.position.y
-	var count := maxi(TUNING.sliver_jump_count, 1)
-	for i in count:
-		var u := (float(i) + 1.0) / float(count + 1)
+	var n := maxi(count, 1)
+	for i in n:
+		var u := (float(i) + 1.0) / float(n + 1)
 		var hump := sin(u * PI)
 		var x := lerpf(x0, x1, u)
 		var y := lerpf(y0, y1, u) - hump * TUNING.sliver_peak
 		_place_sliver(x, y)
-	if _rng.randf() < TUNING.sliver_risky_chance:
-		_place_sliver(lerpf(x0, x1, 0.52), lerpf(y0, y1, 0.5) - TUNING.sliver_risky_peak)
-	var gap := platform.position.x - (prev.position.x + prev.width)
-	if gap > 170.0 and _rng.randf() < TUNING.sliver_dash_chance:
-		var deck := minf(y0, y1)
-		var left := prev.position.x + prev.width + 40.0
-		var right := platform.position.x - 40.0
-		if right - left > 70.0:
-			_place_sliver(lerpf(left, right, 0.38), deck - 112.0)
-			_place_sliver(lerpf(left, right, 0.72), deck - 112.0)
 
 
 func _place_sliver(x: float, y: float) -> void:
 	var sliver := preload("res://scripts/sliver.gd").new()
 	sliver.position = Vector2(x, y)
-	var texture: Texture2D = SLIVER_TEXTURES[_sliver_shape % SLIVER_TEXTURES.size()]
-	_sliver_shape += 1
-	sliver.setup(texture)
+	# One shape for every shard so size and silhouette stay uniform.
+	sliver.setup(SLIVER_TEXTURES[0])
 	add_child(sliver)
 	slivers.append(sliver)
 
@@ -267,6 +288,7 @@ func _despawn(limit_x: float) -> void:
 		if not is_instance_valid(sliver):
 			continue
 		if sliver.global_position.x < limit_x:
+			_missed_slivers += 1
 			sliver.queue_free()
 		else:
 			kept_slivers.append(sliver)

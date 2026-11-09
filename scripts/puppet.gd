@@ -40,6 +40,7 @@ var _hip: Node2D
 var _impact := 0.0
 var _state := ""
 var _phase := 0.0
+var _overdrive_time := 0.0
 var _frame := -1
 var _blend := 1.0
 var _rig_mix := 1.0
@@ -76,6 +77,8 @@ func set_vertical(vy: float) -> void:
 func play_state(state: String, speed_ratio: float) -> void:
 	_speed_ratio = maxf(speed_ratio, 0.0)
 	if _state != state:
+		if state == "overdrive":
+			_overdrive_time = 0.0
 		_state = state
 		_blend = 0.0
 	if _hip:
@@ -106,6 +109,8 @@ func fist_global() -> Vector2:
 func _process(delta: float) -> void:
 	if _state == "run":
 		_run_time += delta * _run_rate()
+	if _state == "overdrive":
+		_overdrive_time += delta
 	if _jumping():
 		_air_time += delta
 	else:
@@ -125,7 +130,7 @@ func _process(delta: float) -> void:
 		_punch_fore.modulate = Color(1.0, 0.82, 0.75).lerp(Color.WHITE, 1.0 - _impact)
 		var pop := 1.0 + _impact * 0.18
 		_punch_fore.scale = Vector2(pop, 1.0 / pop)
-	elif _state != "dash":
+	elif _state != "dash" and _state != "overdrive":
 		_punch_fore.modulate = Color.WHITE
 
 
@@ -478,7 +483,7 @@ func _apply_sheet_frame() -> void:
 	frame = clampi(frame, 0, count - 1)
 	var same_sheet := _frame >= 0 and _sheet.texture == texture
 	# Run and jump frames cut. Entering or leaving a sheet still crossfades.
-	var hard_cut := same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET)
+	var hard_cut := same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET or _state == "overdrive")
 	if frame != _frame or _sheet.texture != texture:
 		if hard_cut:
 			_sheet_prev.visible = false
@@ -515,7 +520,7 @@ func _set_cell(sprite: Sprite2D, texture: Texture2D, frame: int) -> void:
 func _texture_for(state: String) -> Texture2D:
 	if state == "run":
 		return RUN_SHEET
-	if state == "dash":
+	if state == "dash" or state == "overdrive":
 		return DASH_SHEET
 	if state == "roll":
 		return ROLL_SHEET
@@ -525,7 +530,7 @@ func _texture_for(state: String) -> Texture2D:
 func _frame_count(state: String) -> int:
 	if state == "run":
 		return RUN_FRAMES
-	if state == "dash":
+	if state == "dash" or state == "overdrive":
 		return 7
 	if state == "roll":
 		return 4
@@ -554,6 +559,9 @@ func _frame_for(state: String, phase: float) -> int:
 			return _jump_frame()
 		"dash":
 			return _marks(phase, [0.0, 0.12, 0.26, 0.42, 0.58, 0.74, 0.86, 1.01])
+		"overdrive":
+			# Loop the dash-punch lunge. Final art comes later; this is the existing 7-frame sheet.
+			return int(_overdrive_time * 8.0) % 7
 		"roll":
 			return _marks(phase, [0.0, 0.16, 0.40, 0.66, 1.01])
 		_:

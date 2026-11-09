@@ -28,6 +28,9 @@ var lives: int = 3
 var best: int = 0
 var slivers_run: int = 0
 var slivers_lifetime: int = 0
+var streak_count: int = 0
+var streak_mult: int = 1
+var meter_shards: int = 0
 
 var controls: Variant
 var player: GlassRunner
@@ -103,9 +106,11 @@ func _process(delta: float) -> void:
 	if state == PLAYING:
 		var dx := player.global_position.x - _last_x
 		if dx > 0.0:
-			score += dx * TUNING.points_per_pixel
+			score += dx * TUNING.points_per_pixel * float(streak_mult)
 		_last_x = player.global_position.x
 		_collect_slivers()
+		if track.take_misses() > 0:
+			_break_streak()
 		if player.global_position.y > _kill_y():
 			on_life_lost(true)
 	_place_camera()
@@ -170,6 +175,9 @@ func start_run() -> void:
 	slivers_run = 0
 	_sliver_streak = 0
 	_sliver_ms = -10000
+	streak_count = 0
+	streak_mult = 1
+	meter_shards = 0
 	run_speed = TUNING.run_speed_start
 	_run_origin_ms = Time.get_ticks_msec()
 	_slowmo_until = 0
@@ -181,6 +189,8 @@ func start_run() -> void:
 	hud.set_lives(lives)
 	hud.set_combo(0, false)
 	hud.set_slivers(0, false)
+	hud.set_streak(1, false)
+	hud.set_meter(0.0)
 	player.locked = false
 	player.visible = true
 	player.invuln = 0.0
@@ -197,7 +207,7 @@ func register_kill(at: Vector2) -> void:
 	if state != PLAYING:
 		return
 	combo += 1
-	var points := TUNING.kill_points * combo
+	var points := TUNING.kill_points * combo * streak_mult
 	score += points
 	kills += 1
 	audio.play("attack", 0.0, -1.0)
@@ -206,7 +216,9 @@ func register_kill(at: Vector2) -> void:
 	_spawn_impact(at)
 	_shake(TUNING.shake_strength)
 	_flash_a = max(_flash_a, 0.55)
-	_start_hitstop()
+	# Overdrive smashes through a line. Hit-stop would stutter the blast.
+	if player == null or not player.overdriving:
+		_start_hitstop()
 	player.on_attack_impact()
 	hud.set_combo(combo, true)
 
@@ -228,6 +240,9 @@ func on_life_lost(fell: bool) -> void:
 	_release_hitstop()
 	lives -= 1
 	combo = 0
+	_break_streak()
+	if track != null:
+		track.take_misses()
 	hud.set_lives(lives)
 	hud.set_combo(0, false)
 	hud.set_score(held)
@@ -539,19 +554,60 @@ func _collect_slivers() -> void:
 		return
 	var now := Time.get_ticks_msec()
 	for at in hits:
-		if now - _sliver_ms > int(TUNING.sliver_streak_gap * 1000.0):
-			_sliver_streak = 0
 		_sliver_streak += 1
 		_sliver_ms = now
 		slivers_run += 1
 		slivers_lifetime += 1
-		var step := float(mini(_sliver_streak - 1, 7)) * 0.07
+		streak_count += 1
+		var next_mult := _multiplier_for(streak_count)
+		var stepped := next_mult > streak_mult
+		streak_mult = next_mult
+		meter_shards = mini(meter_shards + 1, maxi(TUNING.dash_meter_shards, 1))
+		var step := float(mini(streak_count - 1, 7)) * 0.07
 		if audio != null:
 			audio.play("chime", step, -6.0)
 		hud.set_slivers(slivers_run, true)
+		hud.set_streak(streak_mult, stepped)
+		hud.set_meter(meter_ratio())
 		if _fx != null:
 			_fx.play(_screen_of(at), hud.sliver_anchor())
 	_save_progress()
+
+
+func meter_ratio() -> float:
+	return clampf(float(meter_shards) / float(maxi(TUNING.dash_meter_shards, 1)), 0.0, 1.0)
+
+
+func meter_full() -> bool:
+	return meter_shards >= maxi(TUNING.dash_meter_shards, 1)
+
+
+func spend_meter() -> void:
+	meter_shards = 0
+	if hud != null:
+		hud.set_meter(0.0)
+
+
+func _multiplier_for(count: int) -> int:
+	if count >= TUNING.streak_x5:
+		return 5
+	if count >= TUNING.streak_x4:
+		return 4
+	if count >= TUNING.streak_x3:
+		return 3
+	if count >= TUNING.streak_x2:
+		return 2
+	return 1
+
+
+func _break_streak() -> void:
+	if streak_count == 0 and streak_mult == 1:
+		return
+	streak_count = 0
+	streak_mult = 1
+	_sliver_streak = 0
+	if hud != null:
+		hud.set_streak(1, false)
 
 
 func _screen_of(world_pos: Vector2) -> Vector2:

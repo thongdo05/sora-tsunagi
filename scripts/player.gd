@@ -10,6 +10,7 @@ var locked: bool = false
 var invuln: float = 0.0
 var jumps_left: int = 1
 var dash_cd: float = 0.0
+var overdriving: bool = false
 
 var _jump_buffer: float = 0.0
 var _dash_buffer: float = 0.0
@@ -21,6 +22,9 @@ var _dash_got_kill: bool = false
 var _takeoff_left: float = 0.0
 var _cut_done: bool = false
 var _dash_blend: float = 0.0
+var _overdrive_left: float = 0.0
+var _dash_tap_ms: int = -10000
+var _overdrive_fx
 var _speed_scale: float = 1.0
 var _rolling: float = 0.0
 var _doubling: float = 0.0
@@ -44,6 +48,10 @@ func _ready() -> void:
 	_build_body()
 	_build_puppet()
 	_build_shadow()
+	_overdrive_fx = preload("res://scripts/overdrive_fx.gd").new()
+	_overdrive_fx.name = "OverdriveFx"
+	_overdrive_fx.z_index = 6
+	add_child(_overdrive_fx)
 
 
 func begin_death(fell: bool) -> void:
@@ -51,6 +59,7 @@ func begin_death(fell: bool) -> void:
 	_death_fell = fell
 	_dashing = false
 	_dash_blend = 0.0
+	_end_overdrive()
 	_takeoff_left = 0.0
 	_rolling = 0.0
 	locked = false
@@ -72,6 +81,7 @@ func respawn_at(spot: Vector2) -> void:
 	visible = true
 	_dying = false
 	_dashing = false
+	_end_overdrive()
 	_dash_got_kill = false
 	_dash_blend = 0.0
 	_takeoff_left = 0.0
@@ -93,6 +103,7 @@ func freeze() -> void:
 	_dying = false
 	locked = true
 	_dashing = false
+	_end_overdrive()
 	_hurt.monitoring = false
 	velocity = Vector2.ZERO
 
@@ -103,7 +114,7 @@ func _physics_process(delta: float) -> void:
 		if controls.jump_pressed:
 			_jump_buffer = TUNING.jump_buffer
 		if controls.dash_pressed:
-			_dash_buffer = TUNING.dash_buffer
+			_note_dash_tap()
 		controls.consume()
 	_jump_buffer = max(0.0, _jump_buffer - delta)
 	_dash_buffer = max(0.0, _dash_buffer - delta)
@@ -133,11 +144,11 @@ func _physics_process(delta: float) -> void:
 	var jump_held := false
 	if controls != null:
 		jump_held = bool(controls.jump_held)
-	if not jump_held and velocity.y < 0.0 and not _cut_done and _takeoff_left <= 0.0 and not _dashing:
+	if not jump_held and velocity.y < 0.0 and not _cut_done and _takeoff_left <= 0.0 and not _dashing and not overdriving:
 		velocity.y *= TUNING.jump_cut_scale
 		_cut_done = true
 
-	if not _dashing and _dash_buffer > 0.0 and dash_cd <= 0.0 and drive_speed > 0.0 and _takeoff_left <= 0.0:
+	if not _dashing and not overdriving and _dash_buffer > 0.0 and dash_cd <= 0.0 and drive_speed > 0.0 and _takeoff_left <= 0.0:
 		_start_dash()
 		_dash_buffer = 0.0
 
@@ -152,7 +163,7 @@ func _physics_process(delta: float) -> void:
 		_takeoff_left = maxf(0.0, _takeoff_left - delta)
 		if _takeoff_left <= 0.0:
 			_launch(false)
-	elif _jump_buffer > 0.0 and not _dashing:
+	elif _jump_buffer > 0.0 and not _dashing and not overdriving:
 		if grounded or _coyote > 0.0:
 			_begin_takeoff()
 		elif jumps_left > 0 and not grounded:
@@ -171,7 +182,10 @@ func _physics_process(delta: float) -> void:
 
 	var dash_speed := TUNING.dash_distance / maxf(TUNING.dash_duration, 0.05)
 	var run_speed := drive_speed * _speed_scale
-	if _dashing:
+	if overdriving:
+		velocity.y = 0.0
+		velocity.x = run_speed * TUNING.overdrive_speed
+	elif _dashing:
 		velocity.y = 0.0
 		velocity.x = dash_speed
 	elif _dash_blend > 0.0:
@@ -182,7 +196,7 @@ func _physics_process(delta: float) -> void:
 
 	var fell_from := velocity.y
 	move_and_slide()
-	if drive_speed > 0.0 and not _dashing and not is_on_floor():
+	if drive_speed > 0.0 and not _dashing and not overdriving and not is_on_floor():
 		for i in get_slide_collision_count():
 			var normal := get_slide_collision(i).get_normal()
 			if normal.x < -0.55 and velocity.y >= -20.0:
@@ -191,7 +205,11 @@ func _physics_process(delta: float) -> void:
 
 	_place_attack()
 	_resolve_hits()
-	if _dashing:
+	if overdriving:
+		_overdrive_left -= delta
+		if _overdrive_left <= 0.0:
+			_end_overdrive()
+	elif _dashing:
 		_dash_time -= delta
 		if _dash_time <= 0.0:
 			_dashing = false
@@ -209,8 +227,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _pick_gravity(jump_held: bool) -> float:
-	if _dashing or _takeoff_left > 0.0:
-		return TUNING.rise_gravity * TUNING.dash_gravity_scale if _dashing else 0.0
+	if overdriving or _dashing or _takeoff_left > 0.0:
+		return TUNING.rise_gravity * TUNING.dash_gravity_scale if _dashing or overdriving else 0.0
 	if absf(velocity.y) <= TUNING.apex_speed:
 		return TUNING.apex_gravity
 	if velocity.y < 0.0:
@@ -258,6 +276,42 @@ func _on_land(impact_speed: float) -> void:
 		_land_left = 0.33
 
 
+func _note_dash_tap() -> void:
+	# The first tap always buffers a dash on this frame. The window only watches for a second tap.
+	var now := Time.get_ticks_msec()
+	var window := int(TUNING.overdrive_tap_window * 1000.0)
+	var second := _dash_tap_ms > 0 and now - _dash_tap_ms <= window
+	_dash_tap_ms = now
+	if second and not overdriving and run != null and run.meter_full():
+		_start_overdrive()
+		return
+	_dash_buffer = TUNING.dash_buffer
+
+
+func _start_overdrive() -> void:
+	_dashing = false
+	_dash_time = 0.0
+	_dash_blend = 0.0
+	_dash_buffer = 0.0
+	_takeoff_left = 0.0
+	overdriving = true
+	_overdrive_left = TUNING.overdrive_duration
+	velocity.y = 0.0
+	if _overdrive_fx != null:
+		_overdrive_fx.active = true
+	if run != null:
+		run.spend_meter()
+	if audio != null:
+		audio.play("dash", 0.18, -3.0)
+
+
+func _end_overdrive() -> void:
+	overdriving = false
+	_overdrive_left = 0.0
+	if _overdrive_fx != null:
+		_overdrive_fx.active = false
+
+
 func _start_dash() -> void:
 	_dashing = true
 	_dash_time = TUNING.dash_duration
@@ -280,7 +334,9 @@ func _drive_puppet() -> void:
 		return
 	var ratio := drive_speed / maxf(TUNING.run_speed_start, 1.0)
 	var state := "run"
-	if _dashing:
+	if overdriving:
+		state = "overdrive"
+	elif _dashing:
 		state = "dash"
 	elif _rolling > 0.0:
 		state = "roll"
@@ -298,7 +354,9 @@ func _drive_puppet() -> void:
 		else:
 			state = "fall"
 	var phase := 0.0
-	if _dashing:
+	if overdriving:
+		phase = 0.0
+	elif _dashing:
 		phase = 1.0 - clampf(_dash_time / maxf(TUNING.dash_duration, 0.05), 0.0, 1.0)
 	elif _rolling > 0.0:
 		phase = 1.0 - clampf(_rolling / maxf(TUNING.roll_time, 0.05), 0.0, 1.0)
@@ -306,7 +364,9 @@ func _drive_puppet() -> void:
 	_puppet.set_phase(phase)
 	_puppet.play_state(state, ratio)
 	var coat := 0.0
-	if _dashing:
+	if overdriving:
+		coat = 0.0
+	elif _dashing:
 		var t := 1.0 - clampf(_dash_time / maxf(TUNING.dash_duration, 0.05), 0.0, 1.0)
 		if t < 0.22:
 			coat = t / 0.22 * 0.35
@@ -335,7 +395,9 @@ func _place_attack() -> void:
 
 
 func _resolve_hits() -> void:
-	if _dashing:
+	if overdriving:
+		_smash_ahead()
+	elif _dashing:
 		var areas: Array = _attack_area.get_overlapping_areas()
 		areas.append_array(_hurt.get_overlapping_areas())
 		for area in areas:
@@ -353,6 +415,23 @@ func _resolve_hits() -> void:
 				if run != null:
 					run.on_life_lost(false)
 				return
+
+
+func _smash_ahead() -> void:
+	if run == null or run.track == null:
+		return
+	var origin := global_position + Vector2(48.0, -TUNING.player_height * 0.42)
+	var reach := TUNING.overdrive_smash_reach
+	for monster in run.track.monsters:
+		if not is_instance_valid(monster) or not monster.can_be_hit():
+			continue
+		var at: Vector2 = monster.center()
+		if at.x < global_position.x - 36.0:
+			continue
+		if origin.distance_to(at) > reach:
+			continue
+		monster.shatter()
+		run.register_kill(at)
 
 
 func _update_shadow() -> void:
