@@ -23,16 +23,22 @@ const FLIP_MS: Array[int] = [70, 50, 50, 50, 50, 60, 70, 100]
 ## Silhouette center of each flip cell. The lock keeps that center still; physics owns the arc.
 const FLIP_CENTER_Y: Array[float] = [362.2, 332.7, 347.4, 362.8, 336.3, 317.9, 268.8, 200.3]
 const FLIP_LOCK_Y := 316.05
-const OD_ENTRY_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_entry_2f.png")
-const OD_LOOP_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_loop_8f.png")
-const OD_ENTRY_MS: Array[int] = [60, 50]
-const OD_LOOP_MS := 55
+const DASH_V2_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_v2_10f.png")
+const OD_COAT_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_punch_coatonly_10f.png")
+const OD_FX_SHEET := preload("res://assets/sprites/sheets/pirate_overdrive_punch_fx_10f.png")
+## 768-wide punch cells. Torso of cell 1 is x=256. These are the baked body shifts.
+const PUNCH_SHIFT: Array[int] = [0, -29, -38, 24, 90, 156, 155, 158, 166, 165]
+const PUNCH_MS: Array[int] = [70, 80, 160, 50, 50, 100, 80, 60, 60, 70]
+## Lightning centroid in each punch cell, so the fx layer can scale around the fist.
+const FX_CENTER: Array[Vector2] = [
+	Vector2(256, 300), Vector2(161, 301), Vector2(142, 293), Vector2(361, 315), Vector2(450, 277),
+	Vector2(632, 250), Vector2(628, 250), Vector2(588, 272), Vector2(574, 267), Vector2(507, 301),
+]
 ## Ground anticipation stays the short plant. This is only the push-off pose after the feet leave.
 const JUMP_TAKEOFF_AIR := 0.070
 ## Landing art: fall contact 60ms, absorb 110ms, recover 160ms. Then the run crossfades back.
 const LAND_CONTACT := 0.060
 const LAND_ABSORB := 0.170
-const DASH_SHEET := preload("res://assets/sprites/sheets/pirate_dash_punch_7f.png")
 const ROLL_SHEET := preload("res://assets/sprites/sheets/pirate_roll_4f.png")
 const RUN_SHEET := preload("res://assets/sprites/sheets/pirate_run_12f.png")
 ## Native stride: 12 frames in 0.417 s, about 28.8 fps. Scaled with run speed.
@@ -50,7 +56,8 @@ var _hip: Node2D
 var _impact := 0.0
 var _state := ""
 var _phase := 0.0
-var _overdrive_time := 0.0
+var _punch_time := 0.0
+var _punch_fx: Sprite2D
 var _flip_active := false
 var _flip_time := 0.0
 var _frame := -1
@@ -89,8 +96,8 @@ func set_vertical(vy: float) -> void:
 func play_state(state: String, speed_ratio: float) -> void:
 	_speed_ratio = maxf(speed_ratio, 0.0)
 	if _state != state:
-		if state == "overdrive":
-			_overdrive_time = 0.0
+		if state == "dash" or state == "overdrive":
+			_punch_time = 0.0
 		if state == "double":
 			_flip_active = true
 			_flip_time = 0.0
@@ -126,8 +133,6 @@ func fist_global() -> Vector2:
 func _process(delta: float) -> void:
 	if _state == "run":
 		_run_time += delta * _run_rate()
-	if _state == "overdrive":
-		_overdrive_time += delta
 	if _flip_active and (_state == "double" or _state == "rise" or _state == "apex" or _state == "fall"):
 		_flip_time += delta
 	if _jumping():
@@ -453,6 +458,9 @@ func _build_sheet() -> void:
 	_sheet_prev = _make_sheet_sprite(material)
 	_sheet_prev.z_index = 1
 	_sheet.z_index = 2
+	_punch_fx = _make_sheet_sprite(null)
+	_punch_fx.z_index = 4
+	_punch_fx.visible = false
 	_sheet_bolts = Bolts.new()
 	_sheet_bolts.puppet = self
 	_sheet_bolts.follow_coat = false
@@ -467,7 +475,8 @@ func _make_sheet_sprite(material: ShaderMaterial) -> Sprite2D:
 	sprite.centered = false
 	sprite.region_enabled = true
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.material = material
+	if material != null:
+		sprite.material = material
 	sprite.visible = false
 	add_child(sprite)
 	return sprite
@@ -496,6 +505,7 @@ func _layout_sheet() -> void:
 			continue
 		sprite.scale = Vector2(sx, sy)
 		sprite.position = Vector2(-FOOT.x * sx, -anchor_y * sy)
+	_layout_punch_fx(sx, sy)
 
 
 func _apply_sheet_frame() -> void:
@@ -507,10 +517,10 @@ func _apply_sheet_frame() -> void:
 	frame = clampi(frame, 0, count - 1)
 	var same_sheet := _frame >= 0 and _sheet.texture == texture
 	var from_flip := _sheet.texture == FLIP_SHEET
-	var overdrive_sheet := texture == OD_ENTRY_SHEET or texture == OD_LOOP_SHEET
-	# Run, jump, and flip frames cut. Overdrive cuts between its own sheets.
-	# Leaving Overdrive for the run still crossfades.
-	var hard_cut := from_flip or overdrive_sheet or (same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET or texture == FLIP_SHEET))
+	var from_punch := _sheet.texture == DASH_V2_SHEET or _sheet.texture == OD_COAT_SHEET
+	var punch_sheet := texture == DASH_V2_SHEET or texture == OD_COAT_SHEET
+	# Punch frames cut. Leaving the punch for the run cuts too, so the root step does not ghost.
+	var hard_cut := from_flip or from_punch or punch_sheet or (same_sheet and (texture == RUN_SHEET or texture == JUMP_SHEET or texture == FLIP_SHEET))
 	if frame != _frame or _sheet.texture != texture:
 		if hard_cut:
 			_sheet_prev.visible = false
@@ -525,9 +535,9 @@ func _apply_sheet_frame() -> void:
 	var shown := _blend if _sheet_prev.visible else 1.0
 	_sheet.modulate.a = shown
 	_sheet_prev.modulate.a = 1.0 - shown
-	var punch := _state == "dash" and frame >= 2 and frame <= 5
 	if _sheet_bolts:
-		_sheet_bolts.visible = punch
+		_sheet_bolts.visible = false
+	_apply_punch_fx(frame)
 
 
 func _copy_sheet(src: Sprite2D, dst: Sprite2D) -> void:
@@ -540,8 +550,15 @@ func _copy_sheet(src: Sprite2D, dst: Sprite2D) -> void:
 
 
 func _set_cell(sprite: Sprite2D, texture: Texture2D, frame: int) -> void:
+	var size := _cell_size(texture)
 	sprite.texture = texture
-	sprite.region_rect = Rect2(float(frame) * CELL, 0, CELL, CELL)
+	sprite.region_rect = Rect2(float(frame) * size.x, 0, size.x, size.y)
+
+
+func _cell_size(texture: Texture2D) -> Vector2:
+	if texture == DASH_V2_SHEET or texture == OD_COAT_SHEET or texture == OD_FX_SHEET:
+		return Vector2(768, 512)
+	return Vector2(CELL, CELL)
 
 
 func _texture_for(state: String) -> Texture2D:
@@ -550,11 +567,9 @@ func _texture_for(state: String) -> Texture2D:
 	if state == "run":
 		return RUN_SHEET
 	if state == "dash":
-		return DASH_SHEET
+		return DASH_V2_SHEET
 	if state == "overdrive":
-		if _overdrive_ms() < _ms_sum(OD_ENTRY_MS):
-			return OD_ENTRY_SHEET
-		return OD_LOOP_SHEET
+		return OD_COAT_SHEET
 	if state == "roll":
 		return ROLL_SHEET
 	return JUMP_SHEET
@@ -565,12 +580,8 @@ func _frame_count(state: String) -> int:
 		return 8
 	if state == "run":
 		return RUN_FRAMES
-	if state == "dash":
-		return 7
-	if state == "overdrive":
-		if _overdrive_ms() < _ms_sum(OD_ENTRY_MS):
-			return 2
-		return 8
+	if state == "dash" or state == "overdrive":
+		return 10
 	if state == "roll":
 		return 4
 	return 8
@@ -598,10 +609,8 @@ func _frame_for(state: String, phase: float) -> int:
 			return int(_run_phase() * float(RUN_FRAMES)) % RUN_FRAMES
 		"takeoff", "rise", "apex", "fall", "land", "double":
 			return _jump_frame()
-		"dash":
-			return _marks(phase, [0.0, 0.12, 0.26, 0.42, 0.58, 0.74, 0.86, 1.01])
-		"overdrive":
-			return _overdrive_frame()
+		"dash", "overdrive":
+			return _punch_frame_index()
 		"roll":
 			return _marks(phase, [0.0, 0.16, 0.40, 0.66, 1.01])
 		_:
@@ -627,16 +636,55 @@ func _flip_frame() -> int:
 	return 6
 
 
-func _overdrive_frame() -> int:
-	var entry := _ms_sum(OD_ENTRY_MS)
-	var ms := _overdrive_ms()
-	if ms < entry:
-		return _step_index(ms, OD_ENTRY_MS)
-	return int((ms - entry) / float(OD_LOOP_MS)) % 8
+func set_punch_time(seconds: float) -> void:
+	_punch_time = maxf(seconds, 0.0)
 
 
-func _overdrive_ms() -> float:
-	return _overdrive_time * 1000.0
+func punch_length() -> float:
+	return float(_ms_sum(PUNCH_MS)) / 1000.0
+
+
+## Cells 4 through 7, the reach and the hit.
+func punch_striking() -> bool:
+	var frame := _punch_frame_index()
+	return frame >= 3 and frame <= 6
+
+
+## Cell 6 is the held impact.
+func punch_impact() -> bool:
+	return _punch_frame_index() == 5
+
+
+## World pixels the body has traveled in the art. Added to the root when the run takes over.
+func punch_carry_world() -> float:
+	var frame := clampi(_punch_frame_index(), 0, PUNCH_SHIFT.size() - 1)
+	return float(PUNCH_SHIFT[frame]) * scale.x * _sheet_scale
+
+
+func _punch_frame_index() -> int:
+	return _step_index(_punch_time * 1000.0, PUNCH_MS)
+
+
+func _layout_punch_fx(sx: float, sy: float) -> void:
+	if _punch_fx == null:
+		return
+	var frame := clampi(_frame, 0, FX_CENTER.size() - 1)
+	var center := FX_CENTER[frame]
+	var gain := TUNING.overdrive_fx_scale
+	var base := Vector2(-FOOT.x * sx, -FOOT.y * sy)
+	_punch_fx.scale = Vector2(sx, sy) * gain
+	# Keep the bolt centroid on the fist while the cracks grow.
+	_punch_fx.position = base + Vector2(center.x * sx, center.y * sy) * (1.0 - gain)
+
+
+func _apply_punch_fx(frame: int) -> void:
+	if _punch_fx == null:
+		return
+	var show := _state == "overdrive" and frame > 0
+	_punch_fx.visible = show
+	if not show:
+		return
+	_set_cell(_punch_fx, OD_FX_SHEET, frame)
 
 
 func _ms_sum(durations: Array[int]) -> int:

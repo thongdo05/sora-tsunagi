@@ -57,6 +57,7 @@ var _flash_a: float = 0.0
 var _hurt_a: float = 0.0
 var _death_flash: float = 0.0
 var _world_fx: Node2D
+var _overdrive_sky
 var _frames: int = 0
 var _clock_ms: int = 0
 
@@ -114,6 +115,7 @@ func _process(delta: float) -> void:
 		if player.global_position.y > _kill_y():
 			on_life_lost(true)
 	_place_camera()
+	_sync_overdrive_sky()
 	_apply_world_title(false)
 	_update_flash(delta)
 	hud.set_score(score)
@@ -203,11 +205,13 @@ func restart() -> void:
 	get_tree().reload_current_scene()
 
 
-func register_kill(at: Vector2) -> void:
+func register_kill(at: Vector2, damage_scale: float = 1.0) -> void:
 	if state != PLAYING:
 		return
 	combo += 1
-	var points := TUNING.kill_points * combo * streak_mult
+	# damage_scale is 2 for an Overdrive punch. Guardians are not a fight yet;
+	# the same multiplier is what a future Guardian hook should read.
+	var points := int(round(float(TUNING.kill_points * combo * streak_mult) * damage_scale))
 	score += points
 	kills += 1
 	audio.play("attack", 0.0, -1.0)
@@ -216,9 +220,7 @@ func register_kill(at: Vector2) -> void:
 	_spawn_impact(at)
 	_shake(TUNING.shake_strength)
 	_flash_a = max(_flash_a, 0.55)
-	# Overdrive smashes through a line. Hit-stop would stutter the blast.
-	if player == null or not player.overdriving:
-		_start_hitstop()
+	_start_hitstop()
 	player.on_attack_impact()
 	hud.set_combo(combo, true)
 
@@ -352,6 +354,11 @@ func _build() -> void:
 	add_child(camera)
 	camera.make_current()
 	backdrop.camera = camera
+	_overdrive_sky = preload("res://scripts/overdrive_sky.gd").new()
+	_overdrive_sky.name = "OverdriveSky"
+	_overdrive_sky.z_index = -1
+	_overdrive_sky.camera = camera
+	world.add_child(_overdrive_sky)
 
 	var flash_layer := CanvasLayer.new()
 	flash_layer.layer = 6
@@ -616,6 +623,13 @@ func _screen_of(world_pos: Vector2) -> Vector2:
 	if camera:
 		cam += camera.offset
 	return world_pos - cam + view * 0.5
+
+
+func _sync_overdrive_sky() -> void:
+	if _overdrive_sky == null or player == null:
+		return
+	var impact := player.overdriving and player._puppet != null and player._puppet.punch_impact()
+	_overdrive_sky.set_overdrive(player.overdriving, impact)
 
 
 func _apply_world_title(force: bool) -> void:

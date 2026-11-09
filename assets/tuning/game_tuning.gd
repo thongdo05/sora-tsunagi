@@ -180,6 +180,17 @@ extends Resource
 ## Second tap inside this window upgrades a dash that already started. It does not delay the first tap.
 @export var overdrive_tap_window: float = 0.25
 @export var overdrive_smash_reach: float = 150.0
+## Overdrive punch score, and the multiplier a future Guardian should take. Monsters still break in one hit.
+@export var overdrive_damage_mult: float = 2.0
+## Fist lightning on the Overdrive sheet, grown around the bolt so it reads.
+@export var overdrive_fx_scale: float = 1.4
+## Sky behind the platforms. 0 is clear, 1 is a solid curtain.
+@export var overdrive_sky_dark: float = 0.38
+@export var overdrive_sky_bolts: int = 3
+## How long one bolt shape holds before the next. Long enough that it does not flicker.
+@export var overdrive_sky_hold: float = 0.14
+## Red wash on punch cell 6 only. Not white.
+@export var overdrive_strike_flash: float = 0.22
 
 
 ## 0 at the start of a run, 1 once pace_ramp_seconds has elapsed. Shared by speed and density.

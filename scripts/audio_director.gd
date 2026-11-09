@@ -14,14 +14,25 @@ var _players: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _last_ms: Dictionary = {}
 var _chime: AudioStreamWAV
+## Empty on purpose. Drop the Overdrive punch SFX on this player later.
+var overdrive_punch: AudioStreamPlayer
 
 
 func _ready() -> void:
+	overdrive_punch = AudioStreamPlayer.new()
+	overdrive_punch.name = "overdrive_punch"
+	add_child(overdrive_punch)
 	_chime = _make_chime()
 	for _i in 12:
 		var player := AudioStreamPlayer.new()
 		add_child(player)
 		_players.append(player)
+
+
+func play_overdrive_punch() -> void:
+	if overdrive_punch == null or overdrive_punch.stream == null:
+		return
+	overdrive_punch.play()
 
 
 func play(id: String, pitch_shift: float = 0.0, volume_db: float = 0.0) -> void:
