@@ -1,0 +1,19 @@
+{
+ "bpm_grid": 172,
+ "bar_s": 1.3953488372093024,
+ "loop_start_s": 0.188,
+ "loop_end_s": 56.001953488372095,
+ "bars": 40,
+ "loop_len_s": 55.81395833333333,
+ "loop_len_samples": 2679070,
+ "crossfade": "20 ms equal-power head crossfade from source continuation after loop end",
+ "seam_jump": [
+  0.01512,
+  0.01022
+ ],
+ "median_step": [
+  0.02986,
+  0.02842
+ ],
+ "chroma_cos_lastbar_vs_firstbar": 0.922
+}

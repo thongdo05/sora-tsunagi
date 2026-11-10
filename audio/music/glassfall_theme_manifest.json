@@ -1,0 +1,92 @@
+{
+ "project": "Sora Tsunagi",
+ "event": "music_zone_glassfall_theme_jp_instrumental",
+ "status": "PREVIEW pending Thong listening review - not final",
+ "source": {
+  "provider": "ElevenLabs",
+  "model": "eleven_music_v2_5",
+  "flow": "xLJYHgI7du7D8tvHqYMQ",
+  "node": "lgoWnvgg7LG0kgGjVLjq",
+  "session": "JIeBivyPEt5vVtfgzjVp",
+  "generation": "fW51SEuoCjSQMuPVHMux",
+  "settings": {
+   "duration_seconds": 60,
+   "instrumental": true,
+   "lyrics_type": "instrumental"
+  },
+  "prompt_file": "prompt.txt",
+  "raw_mp3": "raw/provider_content.mp3",
+  "raw_mp3_sha256": "0dc2cd5f731e812e0bcf0708ba125e034e7592cd9ca9b7343f4e0779453b1392"
+ },
+ "files": {
+  "pick/Glassfall_Theme_JP_Instrumental_172bpm_raw.wav": {
+   "desc": "decoded provider MP3, unedited",
+   "duration_s": 60.0,
+   "sr": 48000,
+   "ch": 2,
+   "bits": 24,
+   "lufs_i": -10.2,
+   "dbtp": -0.1,
+   "sha256": "4d5e9fa86703d890381368193604ad742cab06434375f2ba948644f7d5359b65"
+  },
+  "pick/Glassfall_Theme_JP_Instrumental_172bpm_loop.wav": {
+   "desc": "40-bar loop, mastered",
+   "duration_s": 55.81395833333333,
+   "samples": 2679070,
+   "sr": 48000,
+   "ch": 2,
+   "bits": 24,
+   "lufs_i": -20.0,
+   "dbtp": -10.1,
+   "loop": true,
+   "loop_start_sample": 0,
+   "loop_end_sample": 2679070,
+   "sha256": "ea2de50d6dfc57afdea016f017bb17637a2de9bb5ce700e9a2d681f959ba8a06"
+  },
+  "pick/Glassfall_Theme_JP_Instrumental_172bpm_loop.ogg": {
+   "desc": "game export, Vorbis q6",
+   "duration_s": 55.81395833333333,
+   "samples": 2679070,
+   "sr": 48000,
+   "ch": 2,
+   "lufs_i": -20.2,
+   "dbtp": -10.1,
+   "loop": true,
+   "sha256": "f9ca4e1f9f813879d89c769d93868e80100848c6297d1f5d918162fa638cfb1d"
+  },
+  "pick/Glassfall_Theme_JP_Instrumental_172bpm_loop_check.mp3": {
+   "desc": "loop twice back to back; seam at 55.814 s",
+   "duration_s": 111.672,
+   "lufs_i": -20.0,
+   "dbtp": -10.2,
+   "sha256": "820add358b1b4d9c48a7a7f8f4bce9bdcc2e39b11fcd0431505ee9d4d2bed238"
+  }
+ },
+ "loop_point": {
+  "bpm_grid": 172,
+  "bar_s": 1.3953488372093024,
+  "loop_start_s": 0.188,
+  "loop_end_s": 56.001953488372095,
+  "bars": 40,
+  "loop_len_s": 55.81395833333333,
+  "loop_len_samples": 2679070,
+  "crossfade": "20 ms equal-power head crossfade from source continuation after loop end",
+  "seam_jump": [
+   0.01512,
+   0.01022
+  ],
+  "median_step": [
+   0.02986,
+   0.02842
+  ],
+  "chroma_cos_lastbar_vs_firstbar": 0.922
+ },
+ "estimates": {
+  "tempo_bpm": "~172.0 (grid fit 171.96-172.0, phase stable) - estimate",
+  "key": "D minor (chroma 0.81; next F major 0.63) - estimate",
+  "downbeat": "bar 1 at 0.188 s (strongest broadband + low-band onset phase); music starts ~0.13 s after silence",
+  "ending": "ENDED EARLY: full energy to ~56.0 s (exactly bar 41 downbeat), then ~-20 dB ring-out 56-58.5 s, silent by ~59.5 s"
+ },
+ "vocal_check": "Whisper (ja/en) on raw: no lyrics, only hallucinated fragments; Demucs vocal-like stem -8 to -12 dB from 22.3 s (choir 'aah' pads expected) - see stt_local_whisper_medium.txt and vocal_stem_check.txt",
+ "no_listening_done": true
+}

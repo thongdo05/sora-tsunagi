@@ -196,6 +196,8 @@ func start_run() -> void:
 	player.locked = false
 	player.visible = true
 	player.invuln = 0.0
+	if audio != null:
+		audio.call("start_music")
 
 
 func restart() -> void:
@@ -249,6 +251,8 @@ func on_life_lost(fell: bool) -> void:
 	hud.set_combo(0, false)
 	hud.set_score(held)
 	audio.play("death")
+	if audio != null:
+		audio.call("fade_music")
 	_shake(TUNING.shake_strength * 0.85)
 	_death_flash = maxf(_death_flash, TUNING.death_flash)
 	if fell:
@@ -306,6 +310,8 @@ func _finish_respawn() -> void:
 	controls.enabled = true
 	run_speed = TUNING.speed_for_time(elapsed)
 	hud.set_score(score)
+	if audio != null:
+		audio.call("start_music")
 
 
 func _build() -> void:

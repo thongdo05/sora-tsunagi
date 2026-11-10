@@ -6,6 +6,11 @@ const OVERDRIVE_PUNCH := preload("res://audio/final/punch/sfx_pirate_overdrive_p
 ## Where the hit sits inside each file. The punch clock subtracts this from cell 6.
 const DASH_PUNCH_TRANSIENT_MS := 68
 const OVERDRIVE_PUNCH_TRANSIENT_MS := 4
+## Whole file, already cut on the bar. Loop from the start, no offset.
+const THEME := preload("res://audio/music/Glassfall_Theme_JP_Instrumental_172bpm_loop.ogg")
+const MUSIC_BUS := "Music"
+## SFX stay on Master at 0 dB. This bus sits under them.
+const MUSIC_BUS_DB := -6.0
 
 const STREAMS := {
 	"jump": preload("res://assets/audio/sfx_jump.wav"),
@@ -26,9 +31,26 @@ var _chime: AudioStreamWAV
 ## Overdrive impact. Stream is Thong's final punch. It does not loop.
 var overdrive_punch: AudioStreamPlayer
 var dash_punch: AudioStreamPlayer
+var _music: AudioStreamPlayer
+var _fade: Tween
+var _fade_token: int = 0
+var _music_wanted: bool = false
+var _arm_gesture: bool = false
 
 
 func _ready() -> void:
+	_ensure_music_bus()
+	var theme := THEME.duplicate() as AudioStreamOggVorbis
+	theme.loop = true
+	theme.loop_offset = 0.0
+	_music = AudioStreamPlayer.new()
+	_music.name = "music"
+	_music.stream = theme
+	_music.bus = MUSIC_BUS
+	_music.volume_db = 0.0
+	# Hit-stop pauses the tree. The theme keeps going.
+	_music.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_music)
 	_silence_loop(DASH_PUNCH)
 	_silence_loop(OVERDRIVE_PUNCH)
 	dash_punch = AudioStreamPlayer.new()
@@ -52,6 +74,91 @@ func dash_punch_transient_ms() -> int:
 
 func overdrive_punch_transient_ms() -> int:
 	return OVERDRIVE_PUNCH_TRANSIENT_MS
+
+
+func _process(_delta: float) -> void:
+	if _music == null or not _music.playing:
+		return
+	# Death slow-mo would otherwise drop the song with the gameplay clock.
+	var scale := maxf(Engine.time_scale, 0.05)
+	_music.pitch_scale = clampf(1.0 / scale, 0.25, 8.0)
+
+
+func start_music() -> void:
+	_music_wanted = true
+	_play_from_start()
+	if OS.has_feature("web") and (_music == null or not _music.playing):
+		_arm_gesture = true
+		call_deferred("_retry_music")
+
+
+func fade_music() -> void:
+	_music_wanted = false
+	_arm_gesture = false
+	if _music == null or not _music.playing:
+		return
+	_fade_token += 1
+	var token := _fade_token
+	_kill_fade()
+	_fade = create_tween()
+	_fade.set_ignore_time_scale(true)
+	_fade.tween_property(_music, "volume_db", -40.0, 0.5)
+	_fade.tween_callback(func() -> void:
+		if token != _fade_token or _music == null:
+			return
+		_music.stop()
+	)
+
+
+func _retry_music() -> void:
+	if _music_wanted and _music != null and not _music.playing:
+		_play_from_start()
+		_arm_gesture = OS.has_feature("web") and not _music.playing
+
+
+func _input(event: InputEvent) -> void:
+	if not _arm_gesture or not _music_wanted:
+		return
+	if not _is_press(event):
+		return
+	_arm_gesture = false
+	_play_from_start()
+
+
+func _play_from_start() -> void:
+	if _music == null:
+		return
+	_fade_token += 1
+	_kill_fade()
+	_music.pitch_scale = 1.0
+	_music.volume_db = 0.0
+	_music.play(0.0)
+
+
+func _kill_fade() -> void:
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
+	_fade = null
+
+
+func _ensure_music_bus() -> void:
+	var idx := AudioServer.get_bus_index(MUSIC_BUS)
+	if idx < 0:
+		AudioServer.add_bus()
+		idx = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, MUSIC_BUS)
+		AudioServer.set_bus_send(idx, "Master")
+	AudioServer.set_bus_volume_db(idx, MUSIC_BUS_DB)
+
+
+func _is_press(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).pressed
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).pressed
+	if event is InputEventKey:
+		return (event as InputEventKey).pressed
+	return false
 
 
 func play_dash_punch() -> void:
