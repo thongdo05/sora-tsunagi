@@ -24,6 +24,7 @@ var _cut_done: bool = false
 var _dash_blend: float = 0.0
 var _overdrive_left: float = 0.0
 var _punch_elapsed: float = 0.0
+var _punch_tick: int = 0
 var _punch_sfx_due: bool = false
 var _dash_tap_ms: int = -10000
 var _speed_scale: float = 1.0
@@ -209,6 +210,7 @@ func _physics_process(delta: float) -> void:
 	_resolve_hits()
 	if overdriving or _dashing:
 		_punch_elapsed += delta
+		_punch_tick += 1
 		if _puppet:
 			_puppet.set_punch_time(_punch_elapsed)
 		_sync_punch_sound()
@@ -294,6 +296,7 @@ func _start_overdrive() -> void:
 	_takeoff_left = 0.0
 	_dash_got_kill = false
 	_punch_elapsed = 0.0
+	_punch_tick = 0
 	_arm_punch_sound()
 	overdriving = true
 	velocity.y = 0.0
@@ -308,6 +311,7 @@ func _end_overdrive() -> void:
 	overdriving = false
 	_overdrive_left = 0.0
 	_punch_elapsed = 0.0
+	_punch_tick = 0
 	if missed and run != null:
 		run.on_dash_whiff()
 
@@ -322,6 +326,7 @@ func _release_punch() -> void:
 		_dashing = false
 		_dash_blend = 1.0
 		_punch_elapsed = 0.0
+		_punch_tick = 0
 		if not _dash_got_kill and run != null:
 			run.on_dash_whiff()
 
@@ -338,17 +343,18 @@ func _silence_punch() -> void:
 		audio.cancel_punch_sounds()
 
 
-## Cell 6 starts at punch_hit_ms. Each file's transient is subtracted so the hit lands on that frame.
+## Cell 6 minus the file transient, floored onto a physics frame so the hit is early, not late.
 func _sync_punch_sound() -> void:
 	if not _punch_sfx_due or audio == null or _puppet == null:
 		return
 	var transient: int = audio.overdrive_punch_transient_ms() if overdriving else audio.dash_punch_transient_ms()
-	var trigger: int = _puppet.punch_hit_ms() - transient
-	if _punch_elapsed * 1000.0 < float(trigger):
+	var frame: int = _puppet.punch_sfx_frame(transient)
+	if _punch_tick < frame:
 		return
 	_punch_sfx_due = false
 	if OS.get_environment("SORA_PUNCH_LOG") != "":
-		print("PUNCH_SFX ", "overdrive" if overdriving else "dash", " at ", int(_punch_elapsed * 1000.0), " hit ", _puppet.punch_hit_ms(), " unix ", Time.get_unix_time_from_system())
+		var fired_ms: float = float(_punch_tick) * 1000.0 / float(Engine.physics_ticks_per_second)
+		print("PUNCH_SFX ", "overdrive" if overdriving else "dash", " frame ", _punch_tick, " at ", fired_ms, " hit ", _puppet.punch_hit_ms())
 	if overdriving:
 		audio.play_overdrive_punch()
 	else:
@@ -359,6 +365,7 @@ func _start_dash() -> void:
 	_dashing = true
 	_dash_time = TUNING.dash_duration
 	_punch_elapsed = 0.0
+	_punch_tick = 0
 	_arm_punch_sound()
 	dash_cd = TUNING.dash_cooldown
 	_dash_got_kill = false
@@ -367,8 +374,7 @@ func _start_dash() -> void:
 	_takeoff_left = 0.0
 	if _puppet:
 		_puppet.set_punch_time(0.0)
-	if audio != null:
-		audio.play("dash")
+	# The punch file has its own whoosh. sfx_dash stays for a dash that is not this punch.
 
 
 func on_attack_impact() -> void:
