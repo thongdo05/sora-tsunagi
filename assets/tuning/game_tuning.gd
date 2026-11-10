@@ -141,6 +141,17 @@ extends Resource
 @export var landing_pocket: float = 210.0
 @export var min_monster_gap_start: float = 1080.0
 @export var min_monster_gap_end: float = 320.0
+## Extra float on top of the wisp's baked 3 px bob.
+@export var wisp_bob_px: float = 8.0
+@export var wisp_bob_period: float = 1.2
+## Faint ellipse under the dark hound. Wisps cast nothing.
+@export var hound_shadow_alpha: float = 0.22
+## Growl is louder than the punch files, so it sits under them.
+@export var hound_growl_db: float = -10.0
+## The presence loop is about -46 LUFS, so 0 dB stays a quiet bed.
+@export var wisp_presence_db: float = 0.0
+@export var enemy_shatter_seconds: float = 0.55
+@export var enemy_spark_seconds: float = 0.08
 
 @export_group("Score")
 @export var lives_per_run: int = 3

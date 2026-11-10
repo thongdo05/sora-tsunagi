@@ -1,0 +1,231 @@
+{
+  "game": "Sora Tsunagi",
+  "folder": "art/enemies",
+  "generated": "2026-11-10",
+  "timezone": "America/New_York",
+  "facing": "left (toward the player)",
+  "approval": "t172u (step 1 keyframes 5, then step 2 Seedance hound run 28, one retry max, hard cap 61). t173u: continue to step 2 if the hound keyframe is usable.",
+  "credits": {
+    "step1_grok_keyframes": 5,
+    "step2_seedance_hound_run": 28,
+    "retry_used": false,
+    "total_spent": 33,
+    "hard_cap": 61,
+    "balance_before": 3781.43,
+    "balance_after": 3748.43
+  },
+  "void_hound": {
+    "keyframe": "void_hound/keyframe_v1.png",
+    "keyframe_raw": "void_hound/keyframe_v1_raw.png",
+    "hitbox_px": [
+      78,
+      46
+    ],
+    "run": {
+      "sheet": "void_hound/sheets/void_hound_run_8f.png",
+      "frames_dir": "void_hound/frames/run_8f/",
+      "frame_files": [
+        "void_hound/frames/run_8f/void_hound_run_8f_01.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_02.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_03.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_04.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_05.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_06.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_07.png",
+        "void_hound/frames/run_8f/void_hound_run_8f_08.png"
+      ],
+      "gif": "void_hound/preview/void_hound_run_8f.gif",
+      "contact": "void_hound/preview/void_hound_run_8f_contact.jpg",
+      "frame_count": 8,
+      "cell_size": [
+        768,
+        512
+      ],
+      "baseline_y": 496,
+      "anchor_x": 233,
+      "format": "RGBA PNG, transparent, no outline",
+      "ms_per_frame": 57,
+      "total_loop_ms": 456,
+      "source": {
+        "job_id": "e9c9d221-17a0-4190-bbb7-84cae549be77",
+        "model": "seedance_2_5",
+        "mode": "omni_reference",
+        "clip": "void_hound/video_run/clip.mp4",
+        "resolution": "720p",
+        "output": "1280x720",
+        "fps": 24,
+        "clip_frames": 97,
+        "clip_duration_s": 4.041667,
+        "audio": false,
+        "period_start_frame": 1,
+        "period_repeat_frame": 12,
+        "period_unique_frames": 11,
+        "period_ms": 458.33,
+        "picked_source_frames": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          8,
+          10,
+          11
+        ],
+        "timing_note": "The source gallop period is 11 frames at 24 fps = 458.33 ms. The 8-frame sheet uses 57 ms per frame (456 ms total), the closest even timing that keeps that stride."
+      }
+    },
+    "pounce": {
+      "made": false,
+      "note": "No pounce animation was made in this pass."
+    },
+    "shards": {
+      "count": 7,
+      "cell_size": [
+        768,
+        512
+      ],
+      "dir": "void_hound/shards/",
+      "files": [
+        "void_hound/shards/shard_01.png",
+        "void_hound/shards/shard_02.png",
+        "void_hound/shards/shard_03.png",
+        "void_hound/shards/shard_04.png",
+        "void_hound/shards/shard_05.png",
+        "void_hound/shards/shard_06.png",
+        "void_hound/shards/shard_07.png"
+      ],
+      "sheet": "void_hound/shards/shards_sheet.png",
+      "assembled": "void_hound/shards/shards_assembled.png",
+      "canvas_matches": "run cell 1, so a shatter can replace the run sprite in place",
+      "exploded_preview": "preview/void_hound_shards_exploded.jpg"
+    },
+    "readability_fix_v2": {
+      "date": "2026-11-10",
+      "kind": "free local only; no paid renders",
+      "backup": "void_hound/archive_v1/",
+      "applied_to": [
+        "all 8 run cells under void_hound/frames/run_8f/",
+        "void_hound/sheets/void_hound_run_8f.png (replaced in place)",
+        "void_hound/keyframe_v1.png (keyframe_v1_raw.png left untouched)",
+        "7 shards regenerated from the fixed run cell 1 on the same 768x512 canvases",
+        "preview/void_hound_run_8f.gif and void_hound/preview/void_hound_run_8f.gif refreshed"
+      ],
+      "changes": [
+        "Turquoise rift cracks brightened and saturated, with a slight glow; kept turquoise, not green",
+        "Thin pale-cyan / silver rim on the top and back edges (bright ~2.6 px core at full res, plus a soft scale-aware band so the rim survives downscale to 78x46)",
+        "Hide lifted slightly from pure black toward a dark blue-grey; still a black hound"
+      ],
+      "check": "preview/void_hound_fix_check_v2.jpg",
+      "official_1x_px": [
+        78,
+        33
+      ],
+      "note": "The hound is wider than the 78x46 hitbox, so content-fit 1x is 78x33. At 4x on dark Moonheld the wolf now clearly reads (silhouette, cracks, rim). At 1x it is improved \u2014 a long low runner with cyan ticks and a pale top edge, versus nearly invisible before \u2014 but it remains tight on the darkest water because the body is still a 33 px-tall black animal."
+    }
+  },
+  "lantern_wisp": {
+    "keyframe": "lantern_wisp/keyframe_v1.png",
+    "keyframe_raw": "lantern_wisp/keyframe_v1_raw.png",
+    "hitbox_px": [
+      64,
+      46
+    ],
+    "idle": {
+      "sheet": "lantern_wisp/sheets/lantern_wisp_idle_6f.png",
+      "frames_dir": "lantern_wisp/frames/idle_6f/",
+      "frame_files": [
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_01.png",
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_02.png",
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_03.png",
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_04.png",
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_05.png",
+        "lantern_wisp/frames/idle_6f/lantern_wisp_idle_6f_06.png"
+      ],
+      "gif": "lantern_wisp/preview/lantern_wisp_idle_6f.gif",
+      "frame_count": 6,
+      "cell_size": [
+        384,
+        512
+      ],
+      "format": "RGBA PNG, transparent, no outline",
+      "ms_per_frame": 90,
+      "total_loop_ms": 540,
+      "note": "Free local loop. The lantern body, eye and grin stay locked; the inner flame and the right-hand ribbon flicker, with a 3 px vertical bob. Built from the keyed keyframe, no paid render."
+    },
+    "pounce": {
+      "made": false,
+      "note": "Not applicable; the wisp is a floating flyer."
+    },
+    "shards": {
+      "count": 7,
+      "cell_size": [
+        384,
+        512
+      ],
+      "dir": "lantern_wisp/shards/",
+      "files": [
+        "lantern_wisp/shards/shard_01.png",
+        "lantern_wisp/shards/shard_02.png",
+        "lantern_wisp/shards/shard_03.png",
+        "lantern_wisp/shards/shard_04.png",
+        "lantern_wisp/shards/shard_05.png",
+        "lantern_wisp/shards/shard_06.png",
+        "lantern_wisp/shards/shard_07.png"
+      ],
+      "sheet": "lantern_wisp/shards/shards_sheet.png",
+      "assembled": "lantern_wisp/shards/shards_assembled.png",
+      "canvas_matches": "idle cell (384x512), so a shatter can replace the idle sprite in place",
+      "exploded_preview": "preview/lantern_wisp_shards_exploded.jpg"
+    }
+  },
+  "events_for_sound": {
+    "note": "All loop timings below are the real values authored into the sheets and preview GIFs. Shatter values are suggested code timings; no shatter motion or spark art was rendered, only still shard cut-outs.",
+    "hound_run_loop": {
+      "event": "void hound run loop",
+      "made": true,
+      "frame_count": 8,
+      "ms_per_frame": 57,
+      "total_loop_ms": 456
+    },
+    "pounce": {
+      "event": "pounce",
+      "made": false,
+      "frames": null,
+      "ms": null,
+      "note": "No pounce animation was made."
+    },
+    "wisp_flicker": {
+      "event": "lantern wisp flame and ribbon flicker loop",
+      "made": true,
+      "frame_count": 6,
+      "ms_per_frame": 90,
+      "total_loop_ms": 540
+    },
+    "shatter": {
+      "event": "on-hit shatter (both enemies)",
+      "made": "still shard cut-outs only (7 per enemy); motion is code",
+      "driven_by": "code",
+      "suggested_shard_fly_and_fade_ms": 550,
+      "rift_spark_burst": {
+        "suggested": true,
+        "fires_at_ms": 0,
+        "suggested_duration_ms": 80,
+        "note": "Suggested code value. No spark art was rendered. Fire a short rift-spark at the hit instant (0 ms) as the shards begin to fly."
+      }
+    },
+    "hit_flash": {
+      "event": "hit flash",
+      "made": false
+    },
+    "spawn": {
+      "event": "spawn",
+      "made": false
+    }
+  },
+  "previews": {
+    "keyframe_check": "preview/enemies_keyframe_check_v1.jpg",
+    "hound_run_gif": "preview/void_hound_run_8f.gif",
+    "wisp_idle_gif": "preview/lantern_wisp_idle_6f.gif",
+    "hound_fix_check_v2": "preview/void_hound_fix_check_v2.jpg"
+  }
+}

@@ -8,6 +8,9 @@ const STREAMS := {
 	"kill": preload("res://assets/audio/sfx_kill.wav"),
 	"death": preload("res://assets/audio/sfx_death.wav"),
 	"warning": preload("res://assets/audio/sfx_tear_warning.wav"),
+	"hound_growl": preload("res://audio/final/enemies/sfx_void_hound_growl.wav"),
+	"hound_shatter": preload("res://audio/final/enemies/sfx_void_hound_shatter.wav"),
+	"wisp_shatter": preload("res://audio/final/enemies/sfx_lantern_wisp_shatter.wav"),
 }
 
 var _players: Array[AudioStreamPlayer] = []
@@ -43,7 +46,7 @@ func play(id: String, pitch_shift: float = 0.0, volume_db: float = 0.0) -> void:
 	var previous := int(_last_ms.get(id, -10000))
 	var stacked := now - previous < 90
 	_last_ms[id] = now
-	if stacked and (id == "death" or id == "warning" or id == "dash"):
+	if stacked and (id == "death" or id == "warning" or id == "dash" or id == "hound_growl"):
 		return
 	var player := _players[_next]
 	_next = (_next + 1) % _players.size()

@@ -1,0 +1,70 @@
+{
+  "project": "Sora Tsunagi",
+  "art_timing_source": "/workspace/sora-tsunagi/art/enemies/manifest.json",
+  "entries": [
+    {
+      "file": "sfx_void_hound_shatter.wav",
+      "type": "sfx",
+      "duration": 0.54,
+      "loop": false,
+      "event": "void_hound_destroyed",
+      "status": "approved_final",
+      "source_preview": "void_hound_shatter_opt1.wav",
+      "approved_by": "Thong delegated the pick to Hibiki, 2026-11-10 2:14 PM ET",
+      "transient_ms": 3.0,
+      "lufs": -24.29,
+      "dbtp": -3.2,
+      "integration_note": "Fire at shatter start (spark burst 0 ms); 0.54 s matches the suggested 550 ms shard fade.",
+      "sha256": "58f8856f7ac6800e1337d01641cc829b56efca6d9fb719b396a2bdeb466c2015",
+      "format": "48000 Hz PCM_16 1ch"
+    },
+    {
+      "file": "sfx_lantern_wisp_shatter.wav",
+      "type": "sfx",
+      "duration": 0.58,
+      "loop": false,
+      "event": "lantern_wisp_destroyed",
+      "status": "approved_final",
+      "source_preview": "lantern_wisp_shatter_opt2.wav",
+      "approved_by": "Thong delegated the pick to Hibiki, 2026-11-10 2:14 PM ET",
+      "transient_ms": 1.0,
+      "lufs": -23.97,
+      "dbtp": -4.78,
+      "integration_note": "Fire at shatter start; transient at 1 ms lines up with the 0 ms spark burst.",
+      "sha256": "8043e6922aa76c81d4b2a62d3fd0287128a98706e02bbca2ad84220e4cb8e4ea",
+      "format": "48000 Hz PCM_16 1ch"
+    },
+    {
+      "file": "sfx_void_hound_growl.wav",
+      "type": "sfx",
+      "duration": 0.74,
+      "loop": false,
+      "event": "void_hound_telegraph",
+      "status": "approved_final",
+      "source_preview": "void_hound_growl_opt1.wav",
+      "approved_by": "Thong delegated the pick to Hibiki, 2026-11-10 2:14 PM ET",
+      "transient_ms": 83.0,
+      "lufs": -15.81,
+      "dbtp": -3.2,
+      "integration_note": "Measures ~-15.8 LUFS, about 8 LU above the dash punch; start around volume_db -10 so it never masks player punches (tune by ear).",
+      "sha256": "5fe52f540fc73b83c084e3d2dda63f92842facd0a9f5468778cf04d7d560e66d",
+      "format": "48000 Hz PCM_16 1ch"
+    },
+    {
+      "file": "sfx_lantern_wisp_presence_loop.wav",
+      "type": "sfx",
+      "duration": 2.13,
+      "loop": true,
+      "event": "lantern_wisp_presence_loop",
+      "status": "approved_final",
+      "source_preview": "lantern_wisp_presence_loop_opt1.wav",
+      "approved_by": "Thong delegated the pick to Hibiki, 2026-11-10 2:14 PM ET",
+      "transient_ms": null,
+      "lufs": -46.49,
+      "dbtp": -24.88,
+      "integration_note": "Seamless 2.13 s loop, very quiet (-46.5 LUFS); play while the wisp is on screen, raise volume_db by ear if inaudible, stop on destroy.",
+      "sha256": "cc2e7a6a751649bde2669007f6d593a4d3da98a8a1df2da729270241425eccfa",
+      "format": "48000 Hz PCM_16 1ch"
+    }
+  ]
+}
