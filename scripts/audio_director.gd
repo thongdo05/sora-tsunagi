@@ -1,6 +1,12 @@
 extends Node
 
 ## sfx_jump.wav is jump_air_opt1, Thong's pick.
+const DASH_PUNCH := preload("res://audio/final/punch/sfx_pirate_dash_punch.wav")
+const OVERDRIVE_PUNCH := preload("res://audio/final/punch/sfx_pirate_overdrive_punch.wav")
+## Where the hit sits inside each file. The punch clock subtracts this from cell 6.
+const DASH_PUNCH_TRANSIENT_MS := 68
+const OVERDRIVE_PUNCH_TRANSIENT_MS := 4
+
 const STREAMS := {
 	"jump": preload("res://assets/audio/sfx_jump.wav"),
 	"dash": preload("res://assets/audio/sfx_dash.wav"),
@@ -14,13 +20,21 @@ var _players: Array[AudioStreamPlayer] = []
 var _next: int = 0
 var _last_ms: Dictionary = {}
 var _chime: AudioStreamWAV
-## Empty on purpose. Drop the Overdrive punch SFX on this player later.
+## Overdrive impact. Stream is Thong's final punch. It does not loop.
 var overdrive_punch: AudioStreamPlayer
+var dash_punch: AudioStreamPlayer
 
 
 func _ready() -> void:
+	_silence_loop(DASH_PUNCH)
+	_silence_loop(OVERDRIVE_PUNCH)
+	dash_punch = AudioStreamPlayer.new()
+	dash_punch.name = "dash_punch"
+	dash_punch.stream = DASH_PUNCH
+	add_child(dash_punch)
 	overdrive_punch = AudioStreamPlayer.new()
 	overdrive_punch.name = "overdrive_punch"
+	overdrive_punch.stream = OVERDRIVE_PUNCH
 	add_child(overdrive_punch)
 	_chime = _make_chime()
 	for _i in 12:
@@ -29,10 +43,39 @@ func _ready() -> void:
 		_players.append(player)
 
 
+func dash_punch_transient_ms() -> int:
+	return DASH_PUNCH_TRANSIENT_MS
+
+
+func overdrive_punch_transient_ms() -> int:
+	return OVERDRIVE_PUNCH_TRANSIENT_MS
+
+
+func play_dash_punch() -> void:
+	_play_once(dash_punch)
+
+
 func play_overdrive_punch() -> void:
-	if overdrive_punch == null or overdrive_punch.stream == null:
+	_play_once(overdrive_punch)
+
+
+func cancel_punch_sounds() -> void:
+	if dash_punch != null and dash_punch.playing:
+		dash_punch.stop()
+	if overdrive_punch != null and overdrive_punch.playing:
+		overdrive_punch.stop()
+
+
+func _play_once(player: AudioStreamPlayer) -> void:
+	if player == null or player.stream == null:
 		return
-	overdrive_punch.play()
+	player.stop()
+	player.play()
+
+
+func _silence_loop(stream: AudioStream) -> void:
+	if stream is AudioStreamWAV:
+		(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_DISABLED
 
 
 func play(id: String, pitch_shift: float = 0.0, volume_db: float = 0.0) -> void:

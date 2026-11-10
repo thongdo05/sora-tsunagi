@@ -1,0 +1,37 @@
+{
+  "project": "Sora Tsunagi",
+  "entries": [
+    {
+      "file": "sfx_pirate_dash_punch.wav",
+      "type": "sfx",
+      "duration": 0.43,
+      "loop": false,
+      "event": "pirate_dash_punch",
+      "status": "approved_final",
+      "source_preview": "dash_punch_opt1.wav",
+      "approved_by": "Thong, 2026-11-10 1:09 PM ET",
+      "transient_ms": 68.0,
+      "lufs": -23.75,
+      "dbtp": -3.2,
+      "sync_note": "Hit-stop starts 410 ms into the 780 ms animation; trigger this sound 342 ms after animation start so its transient lands on the hit-stop",
+      "sha256": "ecb404ce6404b0296387b86ec3321e72e7b3541a757ba23b49e7db8db767d76f",
+      "format": "48000 Hz PCM_16 1ch"
+    },
+    {
+      "file": "sfx_pirate_overdrive_punch.wav",
+      "type": "sfx",
+      "duration": 0.63,
+      "loop": false,
+      "event": "pirate_overdrive_punch",
+      "status": "approved_final",
+      "source_preview": "overdrive_punch_opt2.wav",
+      "approved_by": "Thong, 2026-11-10 1:09 PM ET",
+      "transient_ms": 4.0,
+      "lufs": -20.35,
+      "dbtp": -3.2,
+      "sync_note": "Hit-stop starts 410 ms into the 780 ms animation; trigger this sound 406 ms after animation start so its transient lands on the hit-stop",
+      "sha256": "c4f61fc7358692acef58db7a3e4a22fd91d9c67e0f077fab64959dd9c1007ab6",
+      "format": "48000 Hz PCM_16 1ch"
+    }
+  ]
+}

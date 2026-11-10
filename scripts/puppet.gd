@@ -644,6 +644,14 @@ func punch_length() -> float:
 	return float(_ms_sum(PUNCH_MS)) / 1000.0
 
 
+## Start of cell 6, the hit hold. Sound delays are this minus each file's transient.
+func punch_hit_ms() -> int:
+	var ms := 0
+	for i in 5:
+		ms += PUNCH_MS[i]
+	return ms
+
+
 ## Cells 4 through 7, the reach and the hit.
 func punch_striking() -> bool:
 	var frame := _punch_frame_index()
