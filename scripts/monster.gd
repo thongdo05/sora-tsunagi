@@ -63,11 +63,13 @@ func setup(is_flyer: bool) -> void:
 	_collision = CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	if flyer:
-		shape.size = Vector2(64, 46)
-		_collision.position = Vector2(0, 0)
+		# Lantern glass, inside the ribbons. The bob shifts this in _process.
+		shape.size = Vector2(34, 78)
+		_collision.position = _wisp_hit_center(0.0)
 	else:
-		shape.size = Vector2(78, 46)
-		_collision.position = Vector2(-2, -24)
+		# Torso and head, inside the ears, tail, and paws.
+		shape.size = Vector2(144, 52)
+		_collision.position = Vector2(-2, -54)
 	_collision.shape = shape
 	add_child(_collision)
 	_sprite = Sprite2D.new()
@@ -166,6 +168,8 @@ func _process(delta: float) -> void:
 		var period := maxf(TUNING.wisp_bob_period, 0.2)
 		var wave := sin(TAU * _bob / period) * TUNING.wisp_bob_px
 		_sprite.position = _wisp_origin() + Vector2(0, wave)
+		if _collision:
+			_collision.position = _wisp_hit_center(wave)
 	else:
 		_sprite.position = _hound_origin()
 		queue_redraw()
@@ -191,7 +195,7 @@ func _draw() -> void:
 	if phase != Phase.LIVE or _dead or flyer:
 		return
 	var shadow := Color(0, 0, 0, TUNING.hound_shadow_alpha)
-	_ellipse(Vector2(-2, 3), 32, 5, shadow)
+	_ellipse(Vector2(-2, 4), 80, 12, shadow)
 
 
 func _draw_tear() -> void:
@@ -212,13 +216,17 @@ func _apply_frame(frame: int) -> void:
 
 
 func _hound_scale() -> float:
-	# Widest gallop frame is about 720 px. Fit that into the 78 px hitbox. Height then sits inside 46.
-	return 78.0 / 720.0
+	# 78/720 fit the stride into the old hitbox. 2.5x puts the back near half the pirate's height.
+	return (78.0 / 720.0) * 2.5
 
 
 func _wisp_scale() -> float:
-	# The ribbon makes the cell about 400 px tall. Fit that into the 46 px hitbox.
-	return 46.0 / 400.0
+	# 46/400 fit the old ribbon into the old hitbox. Same 2.5x so the lantern reads at jump height.
+	return (46.0 / 400.0) * 2.5
+
+
+func _wisp_hit_center(bob: float) -> Vector2:
+	return Vector2(-26, 1) + Vector2(0, bob)
 
 
 func _hound_origin() -> Vector2:
@@ -235,7 +243,7 @@ func _spawn_pieces() -> void:
 	var centers: Array[Vector2] = WISP_CENTERS if flyer else HOUND_CENTERS
 	var cell := Vector2(384, 512) if flyer else Vector2(768, 512)
 	var scale := _wisp_scale() if flyer else _hound_scale()
-	var origin := _wisp_origin() if flyer else _hound_origin()
+	var origin := _sprite.position if _sprite != null else (_wisp_origin() if flyer else _hound_origin())
 	var body := Vector2(191, 255) if flyer else Vector2(376, 340)
 	for i in textures.size():
 		var center: Vector2 = centers[i]
@@ -273,7 +281,7 @@ func _tick_shatter(delta: float) -> void:
 		if not is_instance_valid(piece):
 			continue
 		var dir: Vector2 = piece.get_meta("dir")
-		piece.position += dir * 90.0 * real
+		piece.position += dir * 225.0 * real
 		piece.rotation += float(piece.get_meta("spin")) * real
 		piece.modulate.a = fade
 	if _shatter_age >= life:
@@ -334,4 +342,4 @@ class Spark extends Node2D:
 			var angle := TAU * float(i) / 7.0
 			var dir := Vector2.from_angle(angle)
 			var color := Color(0.75, 0.95, 1.0, 0.85 * alpha) if i % 2 == 0 else Color(1, 1, 1, 0.7 * alpha)
-			draw_line(dir * 4.0, dir * (10.0 + u * 14.0), color, 1.4)
+			draw_line(dir * 8.0, dir * (22.0 + u * 28.0), color, 2.0)

@@ -134,15 +134,18 @@ extends Resource
 @export var monster_chance_start: float = 0.14
 @export var monster_chance_max: float = 0.82
 @export var flyer_chance: float = 0.28
-@export var flyer_height: float = 118.0
+## Center of the wisp. Raised with the larger lantern so a run under it clips the same as before.
+@export var flyer_height: float = 140.0
 @export var telegraph_time: float = 0.50
 @export var telegraph_extra_px: float = 240.0
 @export var first_quiet_distance: float = 1600.0
-@export var landing_pocket: float = 210.0
+## Clear deck before a monster. Longer so the hound's nose does not eat the landing.
+@export var landing_pocket: float = 260.0
 @export var min_monster_gap_start: float = 1080.0
-@export var min_monster_gap_end: float = 320.0
-## Extra float on top of the wisp's baked 3 px bob.
-@export var wisp_bob_px: float = 8.0
+## Late-game center gap. Wider so two full-size hounds keep the old air between them.
+@export var min_monster_gap_end: float = 440.0
+## Extra float on top of the wisp's baked 3 px bob. 1.5x the first pass.
+@export var wisp_bob_px: float = 12.0
 @export var wisp_bob_period: float = 1.2
 ## Faint ellipse under the dark hound. Wisps cast nothing.
 @export var hound_shadow_alpha: float = 0.22
