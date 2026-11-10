@@ -175,8 +175,6 @@ extends Resource
 @export var streak_x5: int = 30
 ## Shards collected to fill the dash meter.
 @export var dash_meter_shards: int = 15
-@export var overdrive_speed: float = 1.8
-@export var overdrive_duration: float = 2.0
 ## Second tap inside this window upgrades a dash that already started. It does not delay the first tap.
 @export var overdrive_tap_window: float = 0.25
 @export var overdrive_smash_reach: float = 150.0
