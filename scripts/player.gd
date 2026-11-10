@@ -2,10 +2,6 @@ class_name GlassRunner
 extends CharacterBody2D
 
 const TUNING := preload("res://assets/tuning/game_tuning.tres")
-const TEX_SIZE := Vector2(768, 673)
-const FEET_TEX := Vector2(210, 654)
-const FIST_TEX := Vector2(735, 168)
-const BODY_TEX_HEIGHT := 664.0
 
 var run: Variant
 var audio: Variant
@@ -14,6 +10,7 @@ var locked: bool = false
 var invuln: float = 0.0
 var jumps_left: int = 1
 var dash_cd: float = 0.0
+var overdriving: bool = false
 
 var _jump_buffer: float = 0.0
 var _dash_buffer: float = 0.0
@@ -22,19 +19,23 @@ var _was_on_floor: bool = false
 var _dashing: bool = false
 var _dash_time: float = 0.0
 var _dash_got_kill: bool = false
-var _bob: float = 0.0
-var _land: float = 0.0
-var _attack: float = 0.0
-var _sprite_scale: float = 1.0
-var _fist_local: Vector2 = Vector2.ZERO
+var _takeoff_left: float = 0.0
+var _cut_done: bool = false
+var _dash_blend: float = 0.0
+var _overdrive_left: float = 0.0
+var _punch_elapsed: float = 0.0
+var _dash_tap_ms: int = -10000
+var _speed_scale: float = 1.0
+var _rolling: float = 0.0
+var _doubling: float = 0.0
+var _land_left: float = 0.0
+var _dying: bool = false
+var _death_fell: bool = false
 
-var _visual: Node2D
-var _sprite: Sprite2D
-var _material: ShaderMaterial
+var _puppet: GlassPuppet
 var _hurt: Area2D
 var _attack_area: Area2D
-var _sparks: CPUParticles2D
-var _embers: CPUParticles2D
+var _attack_shape: CollisionShape2D
 var _shadow: Node2D
 
 
@@ -44,18 +45,29 @@ func _ready() -> void:
 	collision_mask = 1
 	floor_snap_length = 16.0
 	floor_max_angle = deg_to_rad(50)
-	_sprite_scale = TUNING.player_height / BODY_TEX_HEIGHT
 	_build_body()
-	_build_sprite()
+	_build_puppet()
 	_build_shadow()
 
 
-func begin_respawn() -> void:
-	locked = true
+func begin_death(fell: bool) -> void:
+	_dying = true
+	_death_fell = fell
 	_dashing = false
-	visible = false
-	velocity = Vector2.ZERO
+	_dash_blend = 0.0
+	_end_overdrive()
+	_takeoff_left = 0.0
+	_rolling = 0.0
+	locked = false
+	visible = true
 	_hurt.monitoring = false
+	_jump_buffer = 0.0
+	_dash_buffer = 0.0
+	if not fell:
+		velocity = Vector2(velocity.x * 0.12, -240.0)
+	if _puppet:
+		_puppet.modulate.a = 1.0
+		_puppet.set_coat(0.0)
 
 
 func respawn_at(spot: Vector2) -> void:
@@ -63,18 +75,31 @@ func respawn_at(spot: Vector2) -> void:
 	velocity = Vector2.ZERO
 	locked = false
 	visible = true
+	_dying = false
 	_dashing = false
+	_end_overdrive()
 	_dash_got_kill = false
+	_dash_blend = 0.0
+	_takeoff_left = 0.0
+	_rolling = 0.0
+	_doubling = 0.0
+	_speed_scale = 1.0
 	invuln = TUNING.hurt_invuln
+	_jump_buffer = 0.0
+	_dash_buffer = 0.0
 	jumps_left = 1
 	_was_on_floor = false
 	_coyote = TUNING.coyote_time
 	_hurt.monitoring = true
+	if _puppet:
+		_puppet.modulate = Color.WHITE
 
 
 func freeze() -> void:
+	_dying = false
 	locked = true
 	_dashing = false
+	_end_overdrive()
 	_hurt.monitoring = false
 	velocity = Vector2.ZERO
 
@@ -85,7 +110,7 @@ func _physics_process(delta: float) -> void:
 		if controls.jump_pressed:
 			_jump_buffer = TUNING.jump_buffer
 		if controls.dash_pressed:
-			_dash_buffer = TUNING.dash_buffer
+			_note_dash_tap()
 		controls.consume()
 	_jump_buffer = max(0.0, _jump_buffer - delta)
 	_dash_buffer = max(0.0, _dash_buffer - delta)
@@ -93,94 +118,301 @@ func _physics_process(delta: float) -> void:
 	if invuln > 0.0:
 		invuln = max(0.0, invuln - delta)
 
+	if _dying:
+		velocity.y += TUNING.fall_gravity * delta
+		if velocity.y > TUNING.max_fall_speed:
+			velocity.y = TUNING.max_fall_speed
+		if not _death_fell:
+			velocity.x = move_toward(velocity.x, 0.0, 700.0 * delta)
+		move_and_slide()
+		if _puppet:
+			var fade_rate := 0.45 if _death_fell else 1.6
+			_puppet.modulate.a = maxf(0.15 if _death_fell else 0.0, _puppet.modulate.a - delta * fade_rate)
+		_drive_puppet()
+		return
+
 	if locked:
 		velocity = Vector2.ZERO
 		move_and_slide()
-		_animate(delta)
+		_drive_puppet()
 		return
-
-	if not _dashing and _dash_buffer > 0.0 and dash_cd <= 0.0 and drive_speed > 0.0:
-		_start_dash()
-		_dash_buffer = 0.0
-
-	var grounded := is_on_floor()
-	if grounded:
-		_coyote = TUNING.coyote_time
-		jumps_left = 1
-	else:
-		_coyote = max(0.0, _coyote - delta)
-
-	if _jump_buffer > 0.0 and drive_speed >= 0.0 and not locked:
-		if grounded or _coyote > 0.0:
-			_do_jump(false)
-		elif jumps_left > 0 and not grounded:
-			_do_jump(true)
 
 	var jump_held := false
 	if controls != null:
 		jump_held = bool(controls.jump_held)
-	var gliding: bool = jump_held and not is_on_floor() and velocity.y > 0.0 and not _dashing
-	var gravity := TUNING.gravity
-	if _dashing:
-		gravity *= TUNING.dash_gravity_scale
-	elif gliding:
-		gravity = TUNING.glide_gravity
-	velocity.y += gravity * delta
-	if gliding:
-		velocity.y = min(velocity.y, TUNING.glide_max_fall)
-	velocity.y = min(velocity.y, TUNING.max_fall_speed)
+	if not jump_held and velocity.y < 0.0 and not _cut_done and _takeoff_left <= 0.0 and not _dashing and not overdriving:
+		velocity.y *= TUNING.jump_cut_scale
+		_cut_done = true
 
-	if _dashing:
-		velocity.x = max(drive_speed, TUNING.dash_distance / max(TUNING.dash_duration, 0.05))
+	if not _dashing and not overdriving and _dash_buffer > 0.0 and dash_cd <= 0.0 and drive_speed > 0.0 and _takeoff_left <= 0.0:
+		_start_dash()
+		_dash_buffer = 0.0
+
+	var grounded := is_on_floor()
+	if grounded and _takeoff_left <= 0.0:
+		_coyote = TUNING.coyote_time
+		jumps_left = 1
 	else:
-		velocity.x = drive_speed
+		_coyote = maxf(0.0, _coyote - delta)
 
+	if _takeoff_left > 0.0:
+		_takeoff_left = maxf(0.0, _takeoff_left - delta)
+		if _takeoff_left <= 0.0:
+			_launch(false)
+	elif _jump_buffer > 0.0 and not _dashing and not overdriving:
+		if grounded or _coyote > 0.0:
+			_begin_takeoff()
+		elif jumps_left > 0 and not grounded:
+			_launch(true)
+
+	_speed_scale = move_toward(_speed_scale, 1.0, delta / maxf(TUNING.hard_land_recover, 0.05) * TUNING.hard_land_loss)
+	if _rolling > 0.0:
+		_rolling = maxf(0.0, _rolling - delta)
+	if _doubling > 0.0:
+		_doubling = maxf(0.0, _doubling - delta)
+
+	var gravity := _pick_gravity(jump_held)
+	velocity.y += gravity * delta
+	if velocity.y > TUNING.max_fall_speed:
+		velocity.y = TUNING.max_fall_speed
+
+	var dash_speed := TUNING.dash_distance / maxf(TUNING.dash_duration, 0.05)
+	var run_speed := drive_speed * _speed_scale
+	if overdriving:
+		# The punch stays level. It is not a sprint.
+		velocity.y = 0.0
+		velocity.x = run_speed
+	elif _dashing:
+		velocity.y = 0.0
+		var burst := _punch_elapsed < TUNING.dash_duration
+		velocity.x = dash_speed if burst else run_speed
+	elif _dash_blend > 0.0:
+		_dash_blend = maxf(0.0, _dash_blend - delta / maxf(TUNING.dash_ease_out, 0.02))
+		velocity.x = lerpf(run_speed, dash_speed, _dash_blend)
+	else:
+		velocity.x = run_speed
+
+	var fell_from := velocity.y
 	move_and_slide()
-	if drive_speed > 0.0 and not _dashing and not is_on_floor():
+	if drive_speed > 0.0 and not _dashing and not overdriving and not is_on_floor():
 		for i in get_slide_collision_count():
 			var normal := get_slide_collision(i).get_normal()
 			if normal.x < -0.55 and velocity.y >= -20.0:
 				velocity.y = TUNING.lip_hop_velocity
 				break
 
+	_place_attack()
 	_resolve_hits()
-	if _dashing:
-		_dash_time -= delta
-		if _dash_time <= 0.0:
-			_dashing = false
-			if not _dash_got_kill and run != null:
-				run.on_dash_whiff()
+	if overdriving or _dashing:
+		_punch_elapsed += delta
+		if _puppet:
+			_puppet.set_punch_time(_punch_elapsed)
+		if _puppet != null and _punch_elapsed >= _puppet.punch_length():
+			_release_punch()
 
-	if is_on_floor() and not _was_on_floor:
-		_land = 1.0
-		_puff()
+	if is_on_floor() and not _was_on_floor and _takeoff_left <= 0.0:
+		_on_land(fell_from)
+	if _land_left > 0.0:
+		_land_left = maxf(0.0, _land_left - delta)
 	_was_on_floor = is_on_floor()
-	_animate(delta)
+	_drive_puppet()
 	_update_shadow()
+
+
+func _pick_gravity(jump_held: bool) -> float:
+	if overdriving or _dashing or _takeoff_left > 0.0:
+		return TUNING.rise_gravity * TUNING.dash_gravity_scale if _dashing or overdriving else 0.0
+	if absf(velocity.y) <= TUNING.apex_speed:
+		return TUNING.apex_gravity
+	if velocity.y < 0.0:
+		return TUNING.rise_gravity
+	var fall := TUNING.fall_gravity
+	if jump_held:
+		fall *= TUNING.fall_hold_scale
+	return fall
+
+
+func _begin_takeoff() -> void:
+	_takeoff_left = TUNING.takeoff_time
+	_jump_buffer = 0.0
+	_coyote = 0.0
+	_cut_done = false
+	velocity.y = 0.0
+
+
+func _launch(second: bool) -> void:
+	velocity.y = TUNING.double_jump_velocity if second else TUNING.jump_velocity
+	_jump_buffer = 0.0
+	_coyote = 0.0
+	_cut_done = false
+	if second:
+		jumps_left = 0
+		_doubling = 0.42
+		_rolling = 0.0
+	if audio != null:
+		# jump_air_opt1 is a little hotter than the dash. -3 dB sits it with the other hits.
+		# The director adds a small random pitch so the same hop does not drill.
+		audio.play("jump", 0.05 if second else 0.0, -3.0)
+	_puff()
+
+
+func _on_land(impact_speed: float) -> void:
+	_doubling = 0.0
+	_puff()
+	if impact_speed >= TUNING.hard_land_speed:
+		_rolling = TUNING.roll_time
+		_land_left = 0.0
+		_speed_scale = minf(_speed_scale, 1.0 - TUNING.hard_land_loss)
+	else:
+		_rolling = 0.0
+		# Visual only. Frames 6-8 of the jump sheet, then a crossfade into the run.
+		_land_left = 0.33
+
+
+func _note_dash_tap() -> void:
+	# The first tap always buffers a dash on this frame. The window only watches for a second tap.
+	var now := Time.get_ticks_msec()
+	var window := int(TUNING.overdrive_tap_window * 1000.0)
+	var second := _dash_tap_ms > 0 and now - _dash_tap_ms <= window
+	_dash_tap_ms = now
+	if second and not overdriving and run != null and run.meter_full():
+		_start_overdrive()
+		return
+	_dash_buffer = TUNING.dash_buffer
+
+
+func _start_overdrive() -> void:
+	_dashing = false
+	_dash_time = 0.0
+	_dash_blend = 0.0
+	_dash_buffer = 0.0
+	_takeoff_left = 0.0
+	_dash_got_kill = false
+	_punch_elapsed = 0.0
+	overdriving = true
+	velocity.y = 0.0
+	if _puppet:
+		_puppet.set_punch_time(0.0)
+	if run != null:
+		run.spend_meter()
+	if audio != null:
+		audio.play_overdrive_punch()
+
+
+func _end_overdrive() -> void:
+	var missed := not _dash_got_kill
+	overdriving = false
+	_overdrive_left = 0.0
+	_punch_elapsed = 0.0
+	if missed and run != null:
+		run.on_dash_whiff()
+
+
+func _release_punch() -> void:
+	if _puppet:
+		global_position.x += _puppet.punch_carry_world()
+		_puppet.set_punch_time(0.0)
+	if overdriving:
+		_end_overdrive()
+	if _dashing:
+		_dashing = false
+		_dash_blend = 1.0
+		_punch_elapsed = 0.0
+		if not _dash_got_kill and run != null:
+			run.on_dash_whiff()
 
 
 func _start_dash() -> void:
 	_dashing = true
 	_dash_time = TUNING.dash_duration
+	_punch_elapsed = 0.0
 	dash_cd = TUNING.dash_cooldown
 	_dash_got_kill = false
+	_dash_blend = 1.0
+	velocity.y = 0.0
+	_takeoff_left = 0.0
+	if _puppet:
+		_puppet.set_punch_time(0.0)
 	if audio != null:
 		audio.play("dash")
 
 
-func _do_jump(second: bool) -> void:
-	velocity.y = TUNING.double_jump_velocity if second else TUNING.jump_velocity
-	_jump_buffer = 0.0
-	_coyote = 0.0
-	if second:
-		jumps_left = 0
-	if audio != null:
-		audio.play("jump", 0.09 if second else 0.0)
-	_puff()
+func on_attack_impact() -> void:
+	if _puppet:
+		_puppet.impact()
+
+
+func _drive_puppet() -> void:
+	if _puppet == null:
+		return
+	var ratio := drive_speed / maxf(TUNING.run_speed_start, 1.0)
+	var state := "run"
+	if overdriving:
+		state = "overdrive"
+	elif _dashing:
+		state = "dash"
+	elif _rolling > 0.0:
+		state = "roll"
+	elif _takeoff_left > 0.0:
+		state = "takeoff"
+	elif _doubling > 0.0 and not is_on_floor():
+		state = "double"
+	elif _land_left > 0.0 and is_on_floor():
+		state = "land"
+	elif not is_on_floor():
+		if velocity.y < -TUNING.apex_speed:
+			state = "rise"
+		elif absf(velocity.y) <= TUNING.apex_speed:
+			state = "apex"
+		else:
+			state = "fall"
+	var phase := 0.0
+	if overdriving:
+		phase = 0.0
+	elif _dashing:
+		phase = 1.0 - clampf(_dash_time / maxf(TUNING.dash_duration, 0.05), 0.0, 1.0)
+	elif _rolling > 0.0:
+		phase = 1.0 - clampf(_rolling / maxf(TUNING.roll_time, 0.05), 0.0, 1.0)
+	_puppet.set_vertical(velocity.y)
+	_puppet.set_phase(phase)
+	_puppet.play_state(state, ratio)
+	if overdriving or _dashing:
+		_puppet.set_punch_time(_punch_elapsed)
+	# The new dash is a bare arm. Overdrive's black fist is in the sheet, not the coat shader.
+	_puppet.set_coat(0.0)
+	if _dying:
+		return
+	if invuln > 0.0:
+		_puppet.modulate.a = 0.42 if int(invuln * 10.0) % 2 == 0 else 1.0
+	else:
+		_puppet.modulate.a = 1.0
+
+
+func _place_attack() -> void:
+	if _attack_shape == null:
+		return
+	var rect := _attack_shape.shape as RectangleShape2D
+	if overdriving and _puppet != null and _puppet.punch_striking():
+		if rect != null:
+			rect.size = Vector2(TUNING.player_height * 1.15, TUNING.player_height * 0.55)
+		_attack_shape.global_position = global_position + Vector2(TUNING.player_height * 0.95, -TUNING.player_height * 0.28)
+		return
+	if rect != null:
+		rect.size = Vector2(TUNING.player_height * 0.7, TUNING.player_height * 0.42)
+	var ahead := global_position + Vector2(TUNING.player_height * 0.42, -TUNING.player_height * 0.32)
+	if _dashing and _puppet != null:
+		var fist := _puppet.fist_global()
+		if fist.x > ahead.x:
+			ahead = fist
+	_attack_shape.global_position = ahead
 
 
 func _resolve_hits() -> void:
-	if _dashing:
+	if overdriving:
+		if _puppet != null and _puppet.punch_striking():
+			_smash_punch()
+		return
+	elif _dashing:
 		var areas: Array = _attack_area.get_overlapping_areas()
 		areas.append_array(_hurt.get_overlapping_areas())
 		for area in areas:
@@ -191,7 +423,7 @@ func _resolve_hits() -> void:
 					monster.shatter()
 					_dash_got_kill = true
 					if run != null:
-						run.register_kill(at)
+						run.register_kill(at, 1.0)
 	elif invuln <= 0.0:
 		for area in _hurt.get_overlapping_areas():
 			if area is GlassMonster and (area as GlassMonster).can_be_hit():
@@ -200,40 +432,21 @@ func _resolve_hits() -> void:
 				return
 
 
-func _animate(delta: float) -> void:
-	var moving: bool = drive_speed > 40.0 and is_on_floor()
-	var freq: float = 11.0 if moving else 2.4
-	_bob += delta * freq
-	var bob: float = sin(_bob) * (4.2 if moving else 2.0)
-	_visual.position = Vector2(0, bob)
-	var squash := Vector2.ONE
-	if _dashing:
-		squash = Vector2(1.16, 0.88)
-		_visual.rotation = lerp(_visual.rotation, -0.08, 0.4)
-	elif not is_on_floor():
-		var rise := clampf(-velocity.y / abs(TUNING.jump_velocity), -1.0, 1.0)
-		squash = Vector2(1.0 - rise * 0.08, 1.0 + rise * 0.12)
-		_visual.rotation = lerp(_visual.rotation, clampf(-velocity.y * 0.00005, -0.12, 0.18), 0.2)
-	else:
-		squash = Vector2(1.0 + sin(_bob) * 0.035, 1.0 - sin(_bob) * 0.045)
-		_visual.rotation = lerp(_visual.rotation, 0.0, 0.2)
-	if _land > 0.0:
-		squash.x += _land * 0.16
-		squash.y -= _land * 0.14
-		_land = move_toward(_land, 0.0, delta * 7.0)
-	_visual.scale = _visual.scale.lerp(squash, 0.35)
-	var goal: float = 1.0 if _dashing else 0.0
-	_attack = move_toward(_attack, goal, delta / (0.05 if goal > 0.5 else 0.12))
-	if _material:
-		_material.set_shader_parameter("attack", _attack)
-	_sparks.emitting = _attack > 0.15
-	_embers.emitting = _attack > 0.15
-	_sparks.position = _fist_local
-	_embers.position = _fist_local
-	if invuln > 0.0:
-		_visual.modulate.a = 0.35 if int(invuln * 14.0) % 2 == 0 else 1.0
-	else:
-		_visual.modulate.a = 1.0
+func _smash_punch() -> void:
+	if _attack_area == null or run == null:
+		return
+	var areas: Array = _attack_area.get_overlapping_areas()
+	areas.append_array(_hurt.get_overlapping_areas())
+	for area in areas:
+		if area is GlassMonster:
+			var monster := area as GlassMonster
+			if monster.can_be_hit():
+				var at := monster.center()
+				if at.x < global_position.x - 20.0:
+					continue
+				monster.shatter()
+				_dash_got_kill = true
+				run.register_kill(at, TUNING.overdrive_damage_mult)
 
 
 func _update_shadow() -> void:
@@ -297,82 +510,23 @@ func _build_body() -> void:
 	_attack_area.monitorable = false
 	var attack_shape := CollisionShape2D.new()
 	var attack_rect := RectangleShape2D.new()
-	attack_rect.size = Vector2(TUNING.player_height * 0.85, TUNING.player_height * 0.26)
+	attack_rect.size = Vector2(TUNING.player_height * 0.7, TUNING.player_height * 0.42)
 	attack_shape.shape = attack_rect
-	_fist_local = (FIST_TEX - FEET_TEX) * _sprite_scale
-	attack_shape.position = _fist_local + Vector2(-TUNING.player_height * 0.12, 0)
+	_attack_shape = attack_shape
 	_attack_area.add_child(attack_shape)
 	add_child(_attack_area)
 
 
-func _build_sprite() -> void:
-	_visual = Node2D.new()
-	add_child(_visual)
-	_sprite = Sprite2D.new()
-	_sprite.texture = preload("res://assets/sprites/pirate_cutout.png")
-	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_sprite.centered = true
-	_sprite.scale = Vector2(_sprite_scale, _sprite_scale)
-	_sprite.position = -(FEET_TEX - TEX_SIZE * 0.5) * _sprite_scale
-	_material = ShaderMaterial.new()
-	_material.shader = preload("res://shaders/pirate_arm.gdshader")
-	_material.set_shader_parameter("arm_mask", preload("res://assets/sprites/pirate_arm_mask.png"))
-	_material.set_shader_parameter("attack", 0.0)
-	_material.set_shader_parameter("skin_light", Color("de9e7a"))
-	_material.set_shader_parameter("skin_shadow", Color("92543c"))
-	_sprite.material = _material
-	_visual.add_child(_sprite)
-	var blob := _blob_texture()
-	_sparks = _make_sparks(blob, Color(1, 0.22, 0.12, 1), 32)
-	_embers = _make_sparks(blob, Color(0.08, 0.02, 0.05, 0.9), 22)
-	_embers.scale_amount_min = 3.0
-	_embers.scale_amount_max = 7.0
-	_visual.add_child(_sparks)
-	_visual.add_child(_embers)
+func _build_puppet() -> void:
+	_puppet = GlassPuppet.new()
+	_puppet.z_index = 2
+	add_child(_puppet)
 
 
 func _build_shadow() -> void:
 	_shadow = Shadow.new()
 	_shadow.z_index = -1
 	add_child(_shadow)
-
-
-func _make_sparks(blob: Texture2D, color: Color, amount: int) -> CPUParticles2D:
-	var particles := CPUParticles2D.new()
-	particles.texture = blob
-	particles.amount = amount
-	particles.lifetime = 0.22
-	particles.explosiveness = 0.2
-	particles.randomness = 0.65
-	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	particles.emission_sphere_radius = 12.0
-	particles.direction = Vector2(1, -0.15)
-	particles.spread = 58.0
-	particles.gravity = Vector2(40, 60)
-	particles.initial_velocity_min = 30.0
-	particles.initial_velocity_max = 240.0
-	particles.scale_amount_min = 2.0
-	particles.scale_amount_max = 5.5
-	particles.color = color
-	var ramp := Gradient.new()
-	ramp.offsets = PackedFloat32Array([0.0, 1.0])
-	ramp.colors = PackedColorArray([color, Color(color.r * 0.2, color.g * 0.1, color.b * 0.1, 0)])
-	particles.color_ramp = ramp
-	particles.emitting = false
-	particles.local_coords = true
-	particles.z_index = 2
-	return particles
-
-
-func _blob_texture() -> Texture2D:
-	var image := Image.create(16, 16, false, Image.FORMAT_RGBA8)
-	for y in 16:
-		for x in 16:
-			var dist := Vector2(x - 7.5, y - 7.5).length() / 7.5
-			var alpha := clampf(1.0 - dist, 0.0, 1.0)
-			alpha *= alpha
-			image.set_pixel(x, y, Color(1, 1, 1, alpha))
-	return ImageTexture.create_from_image(image)
 
 
 class Shadow extends Node2D:

@@ -4,7 +4,7 @@ First playable prototype of Thong Do’s endless 2D anime dash game, plus the de
 
 This is a separate project from **Reincarnated as WHAT?!** and **Kinetic Arm**.
 
-Glassfall is the only world in this build. It is a landscape runner meant to prove run, jump, dash, and dash-or-die on a phone. Guardians, shards, the world loop, the other fighters, music, ads, and the leaderboard are out of scope.
+This build starts in Moonheld. It is a landscape runner meant to prove run, jump, dash, and dash-or-die on a phone. The world loop order is Glassfall, Moonheld, Lanternfall, and this run begins at Moonheld. Glassfall and Lanternfall still have no plates. Sky Slivers are pickups. Guardians are named but not fought yet. The other fighters, music, ads, and the leaderboard are out of scope.
 
 - [Design draft](docs/DESIGN.md) (latest, November 7 2026)
 - [Build plan v1](docs/BUILD_PLAN_V1.md)
@@ -24,10 +24,10 @@ On the start screen, tap anywhere (or press Space / Enter). The same run keeps o
 
 | Input | Action |
 |---|---|
-| Left half of the screen, tap | Jump |
-| Left half, tap again in the air | Double jump |
-| Left half, hold | Glide (slower fall) |
-| Right half, tap | Dash. Overlap with a monster kills it |
+| Left half of the screen, tap | Short hop. Hold through the rise for a full jump |
+| Left half, tap again in the air | Weaker double jump (a tuck / gainer, not a second hop) |
+| Right half, tap | Dash-punch. The coated fist only comes out during the dash |
+| Falling fast onto a platform | Knees absorb it. A hard landing rolls and sheds a little speed |
 | Mouse | Same zones, left button. Right button dashes |
 | Keyboard | Space / W / Up jump and glide. Shift / K / J dash |
 
@@ -60,7 +60,8 @@ Jump height is `jump_velocity² / (2 × gravity)`. Dash length is `dash_distance
 ## What is placeholder
 
 - The pirate is the single attack-pose cutout. At rest a mask recolors the coated arm to skin and hides the painted lightning. The black arm and red-black sparks come back only during the dash. A small patch of the original coating can remain where the sleeve meets the forearm. Bob and squash are code, not new frames.
-- Platforms and monsters are drawn shapes, not final illustrations. The background is `glassfall_bg.jpg` scrolled as parallax; it is one painting, so the loop is a soft crossfade, not a seamless tile.
+- Platforms are the Moonheld dock pieces in `assets/worlds/moonheld/` (docks, coral ledges, stone slabs, buoys). Monsters are still drawn shapes. The backdrop streams the six-panel Moonheld chain from `assets/worlds/world_loop.tres`. That resource still lists Glassfall, then Moonheld, then Lanternfall. `start_id` is `moonheld`.
+- Sky Slivers sit on jump and dash arcs. Collecting one plays a short chime that steps up in pitch. The HUD counts the run. The results screen shows that count and the lifetime total saved in `user://sora_progress.cfg`.
 - UI is type and flat panels. There is no music.
 
 Concept art stays out of this repo. The Glassfall look mock is a reference only and is not committed.
