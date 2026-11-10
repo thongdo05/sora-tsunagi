@@ -644,6 +644,22 @@ func punch_length() -> float:
 	return float(_ms_sum(PUNCH_MS)) / 1000.0
 
 
+## Start of cell 6, the hit hold. Sound delays are this minus each file's transient.
+func punch_hit_ms() -> int:
+	var ms := 0
+	for i in 5:
+		ms += PUNCH_MS[i]
+	return ms
+
+
+## Physics frame that is at or just before cell 6 minus the file transient.
+## Floor, so a 60 Hz step never waits for the next tick.
+func punch_sfx_frame(transient_ms: int) -> int:
+	var step := 1000.0 / float(Engine.physics_ticks_per_second)
+	var ideal := float(punch_hit_ms() - transient_ms)
+	return int(floor(ideal / step))
+
+
 ## Cells 4 through 7, the reach and the hit.
 func punch_striking() -> bool:
 	var frame := _punch_frame_index()
